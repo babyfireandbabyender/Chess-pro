@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "accounts": {
+      "$key": {
+        ".read": true,
+        ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['name','salt','hash','uid','iters']) && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length <= 16"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
