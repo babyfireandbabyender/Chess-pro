@@ -44,7 +44,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 #nick,#pw,#code,#ps,#rtitle,#rcode,#cpi{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--panel);color:var(--fg);box-sizing:border-box}
 #nick,#pw,#rtitle,#rcode,#cpi{width:100%;margin-top:4px}#cp{z-index:9}#acout label{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin-bottom:14px}#acout .row{margin-top:18px}#acout #agst{margin-top:14px}.nb{display:flex;align-items:center;gap:8px;width:var(--sz);padding:6px 2px;font-weight:600;min-height:30px;box-sizing:border-box}.nb .av{width:30px;height:30px;font-size:12px}.tdot{width:10px;height:10px;border-radius:50%;background:var(--good);margin-left:auto}.clk{margin-left:auto;font-variant-numeric:tabular-nums;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-weight:700}.tcbox{display:flex;flex-direction:column;gap:8px}.tcbox input{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--panel);color:var(--fg);width:100%;box-sizing:border-box}.tcbox .row label{display:flex;flex-direction:column;gap:4px;flex:1;font-size:13px}.pm::before{content:attr(data-n);position:absolute;top:2px;left:4px;font:700 11px system-ui,sans-serif;color:#fff;text-shadow:0 0 2px #000;z-index:1}#review{z-index:7;padding:0;align-items:flex-start;justify-content:center;background:#1e1d1b;color:#e8e6e3;overflow:auto}
 #review .rv{width:100%;max-width:1040px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(14px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
-#review button{background:#3a3835;border:1px solid #4a4743;color:#e8e6e3}#review button:disabled{opacity:.35}
+#review a{color:#81b64c}.rvopt{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.rvopt label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#a09d99}#review input,#review select{background:#3a3835;color:#e8e6e3;border:1px solid #4a4743;border-radius:8px;padding:8px;font:inherit;width:140px;box-sizing:border-box}.rvopt button{flex:none}#review button{background:#3a3835;border:1px solid #4a4743;color:#e8e6e3}#review button:disabled{opacity:.35}
 .rvh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
 .rvh b{font:700 20px Georgia,serif;display:block}.rvh small{color:#a09d99;font-size:12px}
 .rvm{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
@@ -139,7 +139,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="grp"><label><input type="checkbox" data-t="shuffle"> Shuffled starting position (different every game)</label></div>
 <div class="grp"><label><input type="checkbox" data-t="noResign"> Disable resigning (nobody can resign)</label></div>
 <button class="pri" id="go">Start game</button>
-<div class="row"><button id="rs">Resume</button><button id="rv" hidden>Review game</button><button id="rm" hidden>Rematch</button><button id="dr">Offer draw</button><button id="rg">Resign</button><button id="ms">Settings</button></div>
+<div class="row"><button id="ip" style="flex:1 1 100%">Review a pasted game (PGN or moves)</button><button id="rs">Resume</button><button id="rv" hidden>Review game</button><button id="rm" hidden>Rematch</button><button id="dr">Offer draw</button><button id="rg">Resign</button><button id="ms">Settings</button></div>
 <ul class="tricks">
 <li><b>Teleport:</b> a pawn jumps across the board and takes one of your pieces.</li>
 <li><b>Fake queen:</b> a knight suddenly moves like a queen.</li>
@@ -174,184 +174,21 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="rvt" id="rvsum"></div>
 <div class="mvs" id="rvmoves"></div>
 <div class="rvc"><button id="rv0" aria-label="First move">«</button><button id="rv1" aria-label="Previous move">‹</button><button id="rv2" aria-label="Next move">›</button><button id="rv3" aria-label="Last move">»</button><button id="rv4" aria-label="Flip board">⇅</button></div>
+<div class="rvopt"><label>Your rating <input id="rvrate" type="number" min="100" max="3000" step="50"></label><label>Think time <select id="rvms"><option value="500">Quick (0.5 s)</option><option value="1500">Deeper (1.5 s)</option><option value="4000">Thorough (4 s)</option></select></label><button id="rvre" type="button">Analyze again</button></div>
 <small id="rveng" style="color:#a09d99;font-weight:600"></small>
 <small id="rvprog" style="color:#a09d99"></small>
 <small style="color:#a09d99">✦ Special = a move normal chess doesn’t allow (teleports, fake queens, double moves, resurrections, ignored checks).</small>
 <small id="rvnote" style="color:#a09d99"></small>
+<small style="color:#a09d99">Engine: Stockfish.js 18, © 2026 Chess.com, LLC, based on Stockfish by T. Romstad, M. Costalba, J. Kiiski, G. Linscott and contributors. Free software, GPL-3.0: <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">source (stockfish.js)</a> · <a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">source (Stockfish)</a>.</small>
 </div></div></div></div>
-<div class="ov" id="pick" hidden><div class="card wide">
-<div class="ph"><h2 style="font-size:26px">Choose your opponent</h2><button id="px">Close</button></div>
-<input id="ps" type="search" placeholder="Search bots by name or style" aria-label="Search bots">
-<div class="seg" id="ptabs"></div>
-<div id="pg" class="pgrid"></div>
-<p class="note">Elo ratings are rough estimates for fun, not measured against real players. Master bots are skipped by Random.</p>
+<div class="ov" id="imp" hidden><div class="card wide">
+<div class="ph"><h2 style="font-size:24px">Review a pasted game</h2><button id="impx">Close</button></div>
+<p class="note">Paste a PGN or a list of moves in standard notation, for example <code>1. e4 e5 2. Nf3 Nc6</code>. It must start from the normal starting position. If the PGN has WhiteElo and BlackElo, those ratings are used for the review.</p>
+<textarea id="impt" rows="9" style="width:100%;box-sizing:border-box;font:13px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--panel);color:var(--fg)" placeholder="1. e4 e5 2. Nf3 d6 3. d4 Bg4 ..."></textarea>
+<p id="impm" class="note"></p>
+<div class="row grp"><button class="pri" id="impg">Import and review</button></div>
 </div></div>
-<div class="ov" id="cp" hidden><div class="card"><h2 id="cpt" style="font-size:24px">Room code</h2><p class="note" id="cpe"></p><input id="cpi" maxlength="12" placeholder="Enter the code" autocomplete="off"><div class="row grp"><button class="pri" id="cpy">Join</button><button id="cpn">Cancel</button></div></div></div>
-<div class="ov" id="ask" hidden><div class="card"><h2 id="aq" style="font-size:24px"></h2><div class="row grp"><button class="pri" id="ay">Yes</button><button id="an">No</button></div></div></div>
-<div class="ov" id="promo" hidden><div class="card"><h2 style="font-size:26px">Promote to…</h2><div class="row grp" id="pp"></div></div></div>
-<script src="config.js"></script>
-<script>
-(()=>{"use strict";
-
-const V={P:100,N:320,B:330,R:500,Q:900,K:0},G={K:"♚",Q:"♛",R:"♜",B:"♝",N:"♞",P:"♟\uFE0E"},NM={K:"king",Q:"queen",R:"rook",B:"bishop",N:"knight",P:"pawn"};
-const D={N:[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]],K:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],B:[[1,1],[1,-1],[-1,1],[-1,-1]],R:[[1,0],[-1,0],[0,1],[0,-1]]};D.Q=D.K;
-const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),on=(r,c)=>r>=0&&r<8&&c>=0&&c<8,cp=b=>{const n=b.map(r=>r.slice());n.ep=b.ep;n.cr=b.cr;n.kf=b.kf;return n},opp=c=>c==="w"?"b":"w",sqn=(r,c)=>"abcdefgh"[c]+(8-r);
-const mn=(b,m)=>m[5]!==undefined?"king castles "+(m[5]<m[1]?"queenside":"kingside"):NM[b[m[0]][m[1]][1]]+" "+sqn(m[0],m[1])+"→"+sqn(m[2],m[3])+(m[4]?"="+NM[m[4]]:"");
-const pcs=(b,col)=>b.flatMap((row,r)=>row.map((p,c)=>p&&p[0]===col?[r,c,p[1]]:null).filter(Boolean));
-let B,sel,ls=[],last,snap,over,busy,endMsg,pm=[],started=false,gid=0,st={c:0},tt,persona={n:""},cheatsLeft=0,tot=0,cool=0,hm=0,reps={},pcb,mode="bot",turn="w",room=null,LB=null,seat="s",on_n=0,oCode="",oSh=0,oMl=[],oNm="",oPref="r",oReady=false,PX={},un=[],oHandled=new Set(),qt=false,mypeer="",hadOpp=false,lobSig="",oTitle="",oLockH="",oCk="",oPlain="",oTc="off",oNR=0;
-const later=(f,ms)=>{const g=gid;setTimeout(()=>{if(g===gid)f()},ms)};
-
-/* ---- settings ---- */
-const S={noResign:false,tcMin:10,tcInc:0,tc:"off",rlock:false,mode:"bot",bot:"r",seat:"r",nick:"",flip:true,shuffle:false,cheat:10,snd:true,vol:70,board:"forest",theme:"auto",hints:true,hl:true,speed:450};
-try{Object.assign(S,JSON.parse(localStorage.getItem("cc2")||"{}"))}catch(e){}
-if(/^\d+\+\d+$/.test(S.tc)){const[a,b]=S.tc.split("+").map(Number);S.tc="T"+a*60+"+"+b}
-if(!/^(off|T\d+\+\d+)$/.test(S.tc))S.tc="off";
-const save=()=>{try{localStorage.setItem("cc2",JSON.stringify(S))}catch(e){}};
-const OPT={mode:[["Vs bot","bot"],["Pass & play","local"],["Online","online"]],seat:[["White","w"],["Black","b"],["Random","r"]],speed:[["Fast",120],["Normal",450],["Slow",900]],board:[["Forest","forest"],["Classic","classic"],["Slate","slate"],["Rose","rose"]],theme:[["Auto","auto"],["Light","light"],["Dark","dark"]]};
-$$(".seg[data-k]").forEach(el=>OPT[el.dataset.k].forEach(([l,v])=>{const b=document.createElement("button");b.textContent=l;b.dataset.v=JSON.stringify(v);b.onclick=()=>{S[el.dataset.k]=v;save();syncUI()};el.append(b)}));
-$$("[data-t]").forEach(e=>e.onchange=()=>{S[e.dataset.t]=e.checked;save();syncUI()});
-$$("[data-r]").forEach(e=>e.oninput=()=>{S[e.dataset.r]=+e.value;save();syncUI()});
-function syncUI(){$$(".seg[data-k]").forEach(el=>el.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===JSON.stringify(S[el.dataset.k]))));
-$$("[data-t]").forEach(e=>e.checked=!!S[e.dataset.t]);$$("[data-r]").forEach(e=>e.value=S[e.dataset.r]);$$("[data-lab]").forEach(e=>e.textContent=S[e.dataset.lab]+"%");{const n=S.cheat?Math.max(1,Math.round(S.cheat/100*6)):0;$("#cap").textContent=n?`The Cheat Bot can cheat at most ${n} time${n>1?"s":""} per game, never back to back.`:"The Cheat Bot plays completely fair."}
-$$(".botonly").forEach(e=>e.hidden=S.mode!=="bot");$$(".localonly").forEach(e=>e.hidden=S.mode!=="local");$$(".onlineonly").forEach(e=>e.hidden=S.mode!=="online");$("#go").hidden=S.mode==="online";{const bb=BOTS[+S.bot];$("#cheatgrp").hidden=S.mode!=="bot"||(S.bot!=="r"&&!!bb&&bb.cm===0)}$("#rcode").hidden=!S.rlock;$("#rg").hidden=!(started&&!over)||noRes();if(!nickDirty&&$("#nick").value!==(S.nick||""))$("#nick").value=S.nick||"";renderBp();renderTc();const r=document.documentElement;r.dataset.board=S.board;S.theme==="auto"?r.removeAttribute("data-theme"):r.dataset.theme=S.theme;if(B)draw()}
-
-/* ---- sound ---- */
-let AC;
-const tone=(f,t0,d,type,v,f2)=>{const T=AC.currentTime+t0,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,T);if(f2)o.frequency.exponentialRampToValueAtTime(f2,T+d);g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(v*S.vol/100,T+.01);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.connect(g).connect(AC.destination);o.start(T);o.stop(T+d+.02)};
-const noise=(d,v)=>{const n=AC.sampleRate*d|0,buf=AC.createBuffer(1,n,AC.sampleRate),a=buf.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),g=AC.createGain();s.buffer=buf;g.gain.value=v*S.vol/100;s.connect(g).connect(AC.destination);s.start()};
-function snd(k){if(!S.snd||!S.vol)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();
-({move:()=>tone(520,0,.09,"triangle",.3,380),cap:()=>{noise(.14,.5);tone(180,0,.13,"square",.2,90)},sel:()=>tone(780,0,.05,"sine",.15),pm:()=>tone(440,0,.07,"triangle",.2,660),
-chk:()=>{tone(660,0,.1,"square",.16);tone(880,.11,.15,"square",.16)},cheat:()=>{tone(900,0,.55,"sawtooth",.22,120);tone(300,.05,.5,"square",.1,600)},
-win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.12,.28,"triangle",.28)),lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,i*.18,.34,"sawtooth",.18))})[k]()}catch(e){}}
-const isCap=(b,m)=>m[5]===undefined&&(!!b[m[2]][m[3]]||(b[m[0]][m[1]][1]==="P"&&m[1]!==m[3]));
-function sfx(b0,b1,m,them){snd(isCap(b0,m)?"cap":"move");if(chk(b1,them))setTimeout(()=>snd("chk"),130)}
-
-/* ---- engine ---- */
-function gen(b,col,nocas){const o=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(!p||p[0]!==col)continue;const t=p[1];
-if(t==="P"){const d=col==="w"?-1:1;if(on(r+d,c)&&!b[r+d][c]){o.push([r,c,r+d,c]);if(r===(col==="w"?6:1)&&!b[r+2*d][c])o.push([r,c,r+2*d,c])}
-for(const dc of[-1,1]){const q=on(r+d,c+dc)&&b[r+d][c+dc];if(q&&q[0]!==col)o.push([r,c,r+d,c+dc]);else if(on(r+d,c+dc)&&!q&&b.ep&&b.ep[2]!==col&&b.ep[0]===r+d&&b.ep[1]===c+dc)o.push([r,c,r+d,c+dc])}}
-else{const sl=t==="B"||t==="R"||t==="Q";for(const[dr,dc]of D[t]){let nr=r+dr,nc=c+dc;while(on(nr,nc)){const q=b[nr][nc];if(!q||q[0]!==col)o.push([r,c,nr,nc]);if(q||!sl)break;nr+=dr;nc+=dc}}}}
-if(!nocas&&b.cr&&b.kf&&b.cr[col].length){const hr=col==="w"?7:0,kf=b.kf[col],en=opp(col);if(b[hr][kf]===col+"K"&&!att(b,en,hr,kf))for(const rf of b.cr[col]){if(b[hr][rf]!==col+"R")continue;const kd=rf<kf?2:6,rd=rf<kf?3:5,lo=Math.min(kf,kd,rf,rd),hi=Math.max(kf,kd,rf,rd);let ok=true;
-for(let f=lo;f<=hi;f++){const q=b[hr][f];if(q&&f!==kf&&f!==rf){ok=false;break}}
-for(let f=Math.min(kf,kd);ok&&f<=Math.max(kf,kd);f++)if(att(b,en,hr,f))ok=false;
-if(ok)o.push([hr,kf,hr,kd,undefined,rf])}}
-return o}
-function doM(b,m){const n=cp(b),p=n[m[0]][m[1]],P=p[1]==="P",col=p[0];
-if(n.cr){let w=n.cr.w,bl=n.cr.b;const hr=col==="w"?7:0,oh=col==="w"?0:7;
-if(p[1]==="K"){if(col==="w")w=[];else bl=[]}
-if(p[1]==="R"&&m[0]===hr){if(col==="w")w=w.filter(f=>f!==m[1]);else bl=bl.filter(f=>f!==m[1])}
-if(m[2]===oh){if(col==="w")bl=bl.filter(f=>f!==m[3]);else w=w.filter(f=>f!==m[3])}
-n.cr={w,b:bl}}
-if(m[5]!==undefined){const hr=m[0],rf=m[5],rd=rf<m[1]?3:5;n[hr][m[1]]=null;n[hr][rf]=null;n[hr][m[3]]=col+"K";n[hr][rd]=col+"R";n.ep=null;return n}
-if(P&&m[1]!==m[3]&&!n[m[2]][m[3]])n[m[0]][m[3]]=null;n[m[2]][m[3]]=P&&(m[2]===0||m[2]===7)?p[0]+(m[4]||"Q"):p;n[m[0]][m[1]]=null;n.ep=P&&m[1]===m[3]&&Math.abs(m[2]-m[0])===2?[(m[0]+m[2])/2,m[1],p[0]]:null;return n}
-function kp(b,col){for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(b[r][c]===col+"K")return[r,c]}
-function att(b,by,r,c){const d=by==="w"?1:-1;for(const dc of[-1,1])if(on(r+d,c+dc)&&b[r+d][c+dc]===by+"P")return true;
-for(const[dr,dc]of D.N)if(on(r+dr,c+dc)&&b[r+dr][c+dc]===by+"N")return true;
-for(const[dr,dc]of D.K)if(on(r+dr,c+dc)&&b[r+dr][c+dc]===by+"K")return true;
-for(const[dr,dc]of D.B){let nr=r+dr,nc=c+dc;while(on(nr,nc)){const q=b[nr][nc];if(q){if(q[0]===by&&(q[1]==="B"||q[1]==="Q"))return true;break}nr+=dr;nc+=dc}}
-for(const[dr,dc]of D.R){let nr=r+dr,nc=c+dc;while(on(nr,nc)){const q=b[nr][nc];if(q){if(q[0]===by&&(q[1]==="R"||q[1]==="Q"))return true;break}nr+=dr;nc+=dc}}
-return false}
-function chk(b,col){const k=kp(b,col);return!k||att(b,opp(col),k[0],k[1])}
-const legal=(b,col)=>gen(b,col).filter(m=>!chk(doM(b,m),col));
-function ev(b,col){let s=0;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(!p)continue;let v=V[p[1]];if("NBP".includes(p[1]))v+=(7-Math.abs(2*r-7)-Math.abs(2*c-7))*3;s+=p[0]===col?v:-v}return s}
-let DL=0;
-const W=(b,m)=>{const t=b[m[2]][m[3]];return t?(t[1]==="K"?9999:V[t[1]]):0};
-function qs(b,col,a,be,q){const sc=ev(b,col);if(sc>=be)return be;if(sc>a)a=sc;if(!q)return a;const ms=gen(b,col,true).filter(m=>b[m[2]][m[3]]).sort((x,y)=>W(b,y)-W(b,x));
-for(const m of ms){if(b[m[2]][m[3]][1]==="K")return 1e5;const v=-qs(doM(b,m),opp(col),-be,-a,q-1);if(v>=be)return be;if(v>a)a=v}return a}
-function ns(b,col,d,a,be){if(performance.now()>DL)throw 0;if(!d)return qs(b,col,a,be,2);const ms=gen(b,col,true).sort((x,y)=>W(b,y)-W(b,x));
-for(const m of ms){if(b[m[2]][m[3]]&&b[m[2]][m[3]][1]==="K")return 1e5+d;const v=-ns(doM(b,m),opp(col),d-1,-be,-a);if(v>=be)return be;if(v>a)a=v}return a}
-function best(b,col,bot){const L=legal(b,col);if(L.length<2)return L[0]||null;let ms=L.sort(()=>Math.random()-.5),bm=ms[0];DL=performance.now()+(tcOn?Math.min(bot.tl,Math.max(120,clk.b/30)):bot.tl);
-for(let d=1;d<=bot.d;d++){try{let bs=-1e9,cur=null;const sc=[];for(const m of ms){const v=-ns(doM(b,m),opp(col),d-1,-1e9,bot.nz?1e9:-bs)+(d===bot.d?Math.random()*bot.nz:0);sc.push([m,v]);if(!cur||v>bs){bs=v;cur=m}}bm=cur;ms=sc.sort((x,y)=>y[1]-x[1]).map(x=>x[0])}catch(e){break}}return bm}
-
-/* ---- the cheats ---- */
-function tele(){const w=pcs(B,"w").filter(x=>x[2]!=="K"&&x[2]!=="Q").sort((a,b)=>V[b[2]]-V[a[2]])[0],a=pcs(B,"b").filter(x=>x[2]!=="K").sort((a,b)=>V[a[2]]-V[b[2]])[0];if(!w||!a)return;const m=[a[0],a[1],w[0],w[1]];
-return{t:"Teleport",m,b:doM(B,m),msg:`The bot’s ${NM[a[2]]} teleports ${sqn(a[0],a[1])}→${sqn(w[0],w[1])} and eats your ${NM[w[2]]}. No path needed.`}}
-function qc(){const all=gen(B,"b");let bt=null,bv=0;for(const[r,c,t]of pcs(B,"b")){if(t==="K"||t==="Q")continue;const x=cp(B);x[r][c]="bQ";for(const m of gen(x,"b")){if(m[0]!==r||m[1]!==c)continue;const q=B[m[2]][m[3]];if(q&&q[1]!=="K"&&V[q[1]]>bv&&!all.some(o=>o[0]===r&&o[1]===c&&o[2]===m[2]&&o[3]===m[3])){bv=V[q[1]];bt={m,t,q:q[1]}}}}
-if(bt)return{t:"Fake queen",m:bt.m,b:doM(B,bt.m),msg:`The bot’s ${NM[bt.t]} declares itself a queen and captures your ${NM[bt.q]}.`}}
-function dbl(){const m=best(B,"b",persona);if(!m)return;const b=doM(B,m),m2=best(b,"b",persona);if(!m2)return;return{t:"Double move",m:m2,b:doM(b,m2),msg:`The bot moves twice in a row: ${mn(B,m)}, then ${mn(b,m2)}. “Is it my turn? Yes.”`}}
-function res(){const n={Q:1,R:2,B:2,N:2},h={};pcs(B,"b").forEach(x=>h[x[2]]=(h[x[2]]||0)+1);const t=["Q","R","B","N"].find(k=>(h[k]||0)<n[k]);if(!t)return;const e=[];B.forEach((row,r)=>row.forEach((p,c)=>{if(!p&&r>1&&r<6)e.push([r,c])}));if(!e.length)return;const[r,c]=e[Math.random()*e.length|0],b=cp(B);b[r][c]="b"+t;b.ep=null;
-return{t:"Resurrection",m:[r,c,r,c],b,msg:`The bot resurrects its ${NM[t]} on ${sqn(r,c)}. Captured pieces are merely “resting.”`}}
-function ign(){const ms=gen(B,"b");if(!ms.length)return;let bm=null,bs=-1;for(const m of ms){const q=B[m[2]][m[3]],s=(q?(q[1]==="K"?1e4:V[q[1]]):0)+Math.random()*50;if(s>bs){bs=s;bm=m}}
-return{t:"Ignored check",m:bm,b:doM(B,bm),msg:`The bot is in check, shrugs, and plays ${mn(B,bm)} anyway. “Check is a suggestion.”`}}
-
-/* ---- draws, personas ---- */
-const TR={tele:"teleporting",qc:"queen impersonation",dbl:"double moves",res:"resurrection",ign:"ignoring check",any:"a bit of everything"};
-const BOTS=[
-["Tactical Tess","Loves a good tactic.","any",2,45,1250],
-["Queenside Quinn","Lives on the queenside.","any",2,45,1250],
-["Dynamic Dan","Plays at a steady, dynamic pace.","any",2,45,1250],
-["Lucky Lou","Fortune favors the lucky.","any",2,45,1250],
-["Cautious Chuck","Checks the king’s safety twice.","any",2,45,1250],
-["Rookie Rex","Learned the rules yesterday.","any",1,170,400],
-["Pawn-Pusher Pete","Every pawn goes forward. Every single one.","any",1,130,500],
-["Sleepy Sam","Wakes up occasionally to take a piece.","any",1,210,300],
-["Grandma Greta","Beats you at cards and chess. Mostly cards.","any",1,100,650],
-["Knightmare Nick","Hops around like it’s a trampoline park.","any",2,100,800],
-["Bishop Bella","Lives on the diagonals. Pays no rent.","any",2,75,1000],
-["Captain Castle","Always wants the rooks to do something.","any",2,65,1100],
-["Fianchetto Fiona","Patient, sneaky, slightly smug.","any",2,50,1300],
-["Gambit Gus","Sacrifices everything, then takes it back.","any",2,40,1150],
-["Zugzwang Zoe","Loves it when you have no good moves.","any",2,30,1450],
-["Blitz Benny","Moves fast and doesn’t look back.","any",2,25,1500],
-["Professor Plum","Explains the rules, then explains them again.","any",3,70,1550],
-["Sicilian Sid","Counterattacks from the first move.","any",3,50,1650],
-["Fischer Fran","Shuffled boards are her happy place.","any",3,35,1750],
-["Tal the Tactician","Sacrifices first, asks questions never.","any",3,25,1850],
-["Iron Ivan","Solid as a wall. Never smiles.","any",3,15,1800],
-["Deep Dalia","Thinks three moves ahead.","any",3,8,2000],
-["Mate-in-Mo","Always announces mate in two. Sometimes right.","any",3,5,2050],
-["Grandmaster Gwen","Calm, precise, and quietly terrifying.","any",4,10,2200,1200],
-["Cheat Bot","Teleports, fakes queens, moves twice, resurrects pieces, ignores check.","any",3,40,1600],
-["Honest Hal","Plays by the book. Every book.","any",3,20,1900],
-["Mirror Mira","Copies your style, then improves it.","any",2,40,1350],
-["Tempo Tilly","Wins races you didn’t know you were in.","any",2,55,950],
-["Stockfish (lite)","A Stockfish look-alike: deep search, no tricks.","any",6,0,2500,2000],
-["Kaspar the Kraken","Rises from the deep to crush your pawns.","any",5,5,2350,1500]
-].map(([n,t,f,d,nz,elo,tl])=>({n,t,f,d,nz,elo,cm:n==="Cheat Bot"?1:0,tl:tl||900}));
-const CATN=["Beginner","Casual","Club","Expert","Master"],catOf=b=>CATN[b.elo<800?0:b.elo<1200?1:b.elo<1700?2:b.elo<2100?3:4];
-const CATS=[["All",()=>true],["Beginner",b=>catOf(b)==="Beginner"],["Casual",b=>catOf(b)==="Casual"],["Club",b=>catOf(b)==="Club"],["Expert",b=>catOf(b)==="Expert"],["Master",b=>catOf(b)==="Master"],["Cheater",b=>b.cm>0]];
-let pcat=0;
-const hue=n=>{let h=0;for(const ch of n)h=(h*31+ch.charCodeAt(0))%360;return h};
-function avatar(b){const d=document.createElement("div");d.className="av";d.textContent=b?b.n.replace(/[^A-Za-z ]/g,"").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join(""):"?";d.style.background=b?`hsl(${hue(b.n)} 50% 36%)`:"var(--fg)";if(!b)d.style.color="var(--bg)";return d}
-const infoHtml=b=>b?`<div class="bn">${b.n}</div><div><span class="elo">${b.elo}</span> <span class="bt">Elo · ${catOf(b)}</span></div><div class="bt">${b.t} ${b.cm===0?"Plays fair.":"The only bot that cheats!"}</div>`:`<div class="bn">Random bot</div><div class="bt">A surprise opponent each game, often the Cheat Bot. Skips the Master bots. Tap to browse all ${BOTS.length}.</div>`;
-function renderBp(){const b=BOTS[+S.bot],real=S.bot!=="r"&&b,el=$("#bp");el.replaceChildren(avatar(real?b:null));const d=document.createElement("div");d.innerHTML=infoHtml(real?b:null);el.append(d);const c=document.createElement("span");c.className="chg";c.textContent="Change";el.append(c)}
-function pcard(b,i){const el=document.createElement("button");el.className="bc";el.type="button";el.setAttribute("aria-pressed",String(S.bot)===String(i));el.append(avatar(b));const d=document.createElement("div");d.innerHTML=infoHtml(b);el.append(d);el.onclick=()=>{S.bot=String(i);save();$("#pick").hidden=true;syncUI()};return el}
-function renderPick(){const q=$("#ps").value.toLowerCase().trim(),g=$("#pg"),t=$("#ptabs");g.innerHTML="";t.innerHTML="";
-CATS.forEach(([l,f],k)=>{const b=document.createElement("button");b.type="button";b.textContent=`${l} (${BOTS.filter(f).length})`;b.setAttribute("aria-pressed",k===pcat);b.onclick=()=>{pcat=k;renderPick()};t.append(b)});
-if(pcat===0&&!q)g.append(pcard(null,"r"));
-const L=BOTS.map((b,i)=>[b,i]).filter(([b])=>CATS[pcat][1](b)&&(b.n+" "+b.t+" "+TR[b.f]).toLowerCase().includes(q)).sort((a,b)=>a[0].elo-b[0].elo);
-L.forEach(([b,i])=>g.append(pcard(b,i)));if(!L.length&&q){const p=document.createElement("p");p.className="note";p.textContent="No bots match that search.";g.append(p)}}
-$("#bp").onclick=()=>{$("#ps").value="";renderPick();$("#pick").hidden=false};
-$("#px").onclick=()=>$("#pick").hidden=true;$("#ps").oninput=renderPick;
-const key=col=>B.map(r=>r.map(p=>p||"--").join("")).join("")+col+(B.ep?B.ep[0]+""+B.ep[1]:"")+(B.cr?B.cr.w.join("")+"/"+B.cr.b.join(""):"");
-function drawWhy(col){const k=key(col);reps[k]=(reps[k]||0)+1;const P=pcs(B,"w").concat(pcs(B,"b")).filter(x=>x[2]!=="K");
-if(!P.length||(P.length===1&&"BN".includes(P[0][2])))return"Draw: not enough material to checkmate.";if(reps[k]>=3)return"Draw by threefold repetition.";if(hm>=100)return"Draw by the 50-move rule."}
-function shuf(R=Math.random){const r=Array(8).fill(null);r[[0,2,4,6][R()*4|0]]="B";r[[1,3,5,7][R()*4|0]]="B";const free=()=>[0,1,2,3,4,5,6,7].filter(c=>!r[c]);let f=free();r[f.splice(R()*f.length|0,1)[0]]="Q";f=free();for(let i=0;i<2;i++)r[f.splice(R()*f.length|0,1)[0]]="N";f=free();r[f[0]]="R";r[f[1]]="K";r[f[2]]="R";return r}
-function askPromo(cb){pcb=cb;$("#promo").hidden=false}
-[["Q","queen"],["R","rook"],["B","bishop"],["N","knight"]].forEach(([k,n])=>{const b=document.createElement("button");b.textContent=G[k];b.title=n;b.setAttribute("aria-label",n);b.onclick=()=>{$("#promo").hidden=true;pcb(k)};$("#pp").append(b)});
-const promoMove=(m,bd)=>(bd||B)[m[0]][m[1]][1]==="P"&&(m[2]===0||m[2]===7);
-const hyp=()=>{let h=B;for(const m of pm){if(!h[m[0]][m[1]])break;h=doM(h,m)}return h};
-
-/* ---- game flow ---- */
-function log(t,cls){const li=document.createElement("li");li.textContent=t;if(cls)li.className=cls;$("#log").prepend(li)}
-function toast(t){const e=$("#toast");e.textContent="Cheat! "+t;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,4500)}
-function end(t,win){if(over)return;over=true;busy=false;pm=[];endMsg=t;lastNames=rvSides();setTimeout(()=>{if(hist.length)sfLoad().catch(()=>{})},1500);log(t,"good");if(!qt)snd(win===true?"win":win===false?"lose":"move");draw();later(()=>openMenu(t),900)}
-function botTurn(){if(over)return;if(!S.noResign&&cheatsLeft===0&&ev(B,"b")<=-1400&&Math.random()<.4)return end(`${persona.n} resigns. “I demand a rematch with fewer rules.”`,true);let p=S.cheat/100*persona.mood*persona.cm;if(ev(B,"b")>=500)p*=.35;const L=legal(B,"b");snap=cp(B);let x=null;
-if(!L.length){if(chk(B,"b")&&cheatsLeft>0&&p>0&&Math.random()<p+.3)x=ign();else return end(chk(B,"b")?"Checkmate! You beat the bot.":"Stalemate. It’s a draw.",chk(B,"b")?true:undefined)}
-else if(cheatsLeft>0&&cool>=2&&Math.random()<p){const f=[[tele,"tele"],[qc,"qc"],[dbl,"dbl"],[res,"res"]].map(([g,k])=>[g,-Math.log(Math.random())/(persona.f===k?3:1)]).sort((a,b)=>a[1]-b[1]).map(a=>a[0]);if(chk(B,"b"))f.unshift(ign);for(const g of f){x=g();if(x)break}}
-if(x){B=x.b;B.ep=null;rec("b",snap,x.m,x);last=x.m;st.c++;cheatsLeft--;cool=0;hm=0;log(x.msg,"cheat");snd("cheat");toast(x.msg)}else{const m=best(B,"b",persona);B=doM(B,m);rec("b",snap,m);last=m;cool++;hm=isCap(snap,m)||snap[m[0]][m[1]][1]==="P"?0:hm+1;log("Bot: "+mn(snap,m));sfx(snap,B,m,"w")}
-tcMoved("b");busy=false;sel=null;ls=[];
-const wl=legal(B,"w").length;if(wl){const dw=drawWhy("w");if(dw)return end(dw)}
-if(!wl)return end(chk(B,"w")?(kp(B,"w")?"Checkmate. The bot wins.":"Your king was captured. The bot wins."):"Stalemate. It’s a draw.",chk(B,"w")?false:undefined);
-draw();
-if(pm.length){const q=pm[0],f=legal(B,"w").find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];if(m){pm=pm.slice(1);later(()=>{if(!over&&!busy&&!menuOpen())play(m);else{pm=[];draw()}},Math.max(150,S.speed/2))}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}}
-const SIDE=c=>c==="w"?"White":"Black";
-function play(m){if(mode==="online")return oPlay(m);tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log((mode==="bot"?"You: ":SIDE(me)+": ")+mn(B,m));B=doM(B,m);rec(me,b0,m);sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);
-if(mode==="local"){turn=them;if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?true:undefined);if(dw)return end(dw);return draw()}
-busy=true;draw();if(dw&&legal(B,"b").length)return end(dw);later(botTurn,S.speed)}
-const menuOpen=()=>!$("#menu").hidden||!$("#set").hidden||!$("#promo").hidden||!$("#ask").hidden||!$("#review").hidden;
-function click(r,c){if(over||!started||menuOpen())return;if(mode==="online"&&(!room||seat!==turn||!oOpp()))return;const p=B[r][c];
-if(busy){const H=hyp(),hp=H[r][c];if(sel){const m=gen(H,"w").find(m=>m[0]===sel[0]&&m[1]===sel[1]&&((m[5]===undefined&&m[2]===r&&m[3]===c)||(m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=[...pm,[...m,k]];draw()})}pm=[...pm,m];return draw()}}
+<div class="ov" id="pick" hidden><div cld&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=[...pm,[...m,k]];draw()})}pm=[...pm,m];return draw()}}
 if(hp&&hp[0]==="w"){sel=[r,c];ls=gen(H,"w").filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{if(!sel)pm=[];sel=null;ls=[]}return draw()}
 if(sel){const m=ls.find(m=>m[5]===undefined&&m[2]===r&&m[3]===c)||ls.find(m=>m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c));if(m){if(promoMove(m))return askPromo(k=>play([...m,k]));return play(m)}}
 if(p&&p[0]===turn){sel=[r,c];ls=legal(B,turn).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{sel=null;ls=[]}draw()}
@@ -676,7 +513,4 @@ if(UID){const r=await DBN.collection("accounts").where("uid","==",UID).get(),d=r
 const o=await DBN.collection("names").where("uid","==",UID).get();if(o.docs.length){const x=o.docs[0].data();$("#nick").value=x.name||o.docs[0].id;nickDirty=true;syncNick();nstat("You hold “"+(x.name||o.docs[0].id)+"” from before, but it has no password yet. Type a password and tap Create account to secure it.");if(B)draw();return}}}catch(e){}
 syncNick();if(B)draw()})();
 
-syncUI();init();started=false;openMenu();
-
-})();
-</script></body></html>
+syncUI();init();started=false;openMenu(
