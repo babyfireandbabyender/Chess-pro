@@ -1,9 +1,9 @@
-// Cheater's Chess: online account settings (see README.md).
-// Leave both values empty and accounts still work, but only on the device that created them.
-// Fill both in to make account names unique worldwide.
+// Cheater's Chess: online settings (see README.md).
+// Leave both values empty and the game still works, but accounts are saved only in
+// the browser that created them and online rooms are not available.
 window.CHESS_CONFIG = {
   firebase: {
-    apiKey: "AIzaSyAZbXREGshhT4HvmnKkxrqHS",        // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS"
-    databaseURL: "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"    // e.g. "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    apiKey: "",     // Firebase web app "apiKey"
+    projectId: ""   // Firebase "Project ID", e.g. "my-chess-1234"
   }
 };
