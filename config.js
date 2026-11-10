@@ -3,7 +3,7 @@
 // Fill both in to make account names unique worldwide.
 window.CHESS_CONFIG = {
   firebase: {
-    apiKey: "",        // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS"
-    databaseURL: ""    // e.g. "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    apiKey: "AIzaSyAZbXREGshhT4HvmnKkxrqHS",        // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS"
+    databaseURL: "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"    // e.g. "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"
   }
 };
