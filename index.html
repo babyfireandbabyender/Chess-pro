@@ -77,7 +77,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 .mc{display:flex;gap:6px;align-items:center;padding:6px 8px;cursor:pointer;min-width:0}
 .mc.cur{background:#4b4845;outline:2px solid #81b64c;outline-offset:-2px;border-radius:4px}
 .rvc{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
+.sq.fog{background:#1b2420!important}.sq.fog::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 6px,transparent 6px 12px)}.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
 .bc{display:flex;gap:12px;align-items:center;text-align:left;width:100%;padding:10px 12px;box-sizing:border-box}
 .bc[aria-pressed=true]{border:2px solid var(--acc);background:var(--bg)}
 .av{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px Georgia,serif;text-shadow:0 1px 2px rgba(0,0,0,.45)}
@@ -128,6 +128,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div><b>Your side</b><div class="seg" data-k="seat"></div></div>
 <label>Room name <input id="rtitle" maxlength="24" placeholder="My room" autocomplete="off"></label>
 <label><input type="checkbox" data-t="rlock"> Require a code to join</label>
+<label><input type="checkbox" data-t="fog"> Fog of war: you only see what your pieces can reach. No check; capture the king to win.</label>
 <input id="rcode" maxlength="12" placeholder="Room code: letters &amp; numbers (blank = random)" aria-label="Room code" autocomplete="off" hidden>
 <button class="pri" id="mk" style="margin:0">Create room</button>
 <div class="row" style="align-items:center"><b style="flex:1">Rooms right now</b><button id="orf" style="flex:none">Refresh</button></div>
@@ -207,11 +208,11 @@ const D={N:[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]],K:[[1,0],[-
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),on=(r,c)=>r>=0&&r<8&&c>=0&&c<8,cp=b=>{const n=b.map(r=>r.slice());n.ep=b.ep;n.cr=b.cr;n.kf=b.kf;return n},opp=c=>c==="w"?"b":"w",sqn=(r,c)=>"abcdefgh"[c]+(8-r);
 const mn=(b,m)=>m[5]!==undefined?"king castles "+(m[5]<m[1]?"queenside":"kingside"):NM[b[m[0]][m[1]][1]]+" "+sqn(m[0],m[1])+"→"+sqn(m[2],m[3])+(m[4]?"="+NM[m[4]]:"");
 const pcs=(b,col)=>b.flatMap((row,r)=>row.map((p,c)=>p&&p[0]===col?[r,c,p[1]]:null).filter(Boolean));
-let B,sel,ls=[],last,snap,over,busy,endMsg,pm=[],started=false,gid=0,st={c:0},tt,persona={n:""},cheatsLeft=0,tot=0,cool=0,hm=0,reps={},pcb,mode="bot",turn="w",room=null,LB=null,seat="s",on_n=0,oCode="",oSh=0,oMl=[],oNm="",oPref="r",oReady=false,PX={},un=[],oHandled=new Set(),qt=false,mypeer="",hadOpp=false,lobSig="",oTitle="",oLockH="",oCk="",oPlain="",oTc="off",oNR=0;
+let B,sel,ls=[],last,snap,over,busy,endMsg,pm=[],started=false,gid=0,st={c:0},tt,persona={n:""},cheatsLeft=0,tot=0,cool=0,hm=0,reps={},pcb,mode="bot",turn="w",room=null,LB=null,seat="s",on_n=0,oCode="",oSh=0,oMl=[],oNm="",oPref="r",oReady=false,PX={},un=[],oHandled=new Set(),qt=false,mypeer="",hadOpp=false,lobSig="",oTitle="",oLockH="",oCk="",oPlain="",oTc="off",oNR=0,oFog=0,fog=false,oPmBusy=false;
 const later=(f,ms)=>{const g=gid;setTimeout(()=>{if(g===gid)f()},ms)};
 
 /* ---- settings ---- */
-const S={rating:1000,sfms:500,noResign:false,tcMin:10,tcInc:0,tc:"off",rlock:false,mode:"bot",bot:"r",seat:"r",nick:"",flip:true,shuffle:false,cheat:10,snd:true,vol:70,board:"forest",theme:"auto",hints:true,hl:true,speed:450};
+const S={fog:false,rating:1000,sfms:500,noResign:false,tcMin:10,tcInc:0,tc:"off",rlock:false,mode:"bot",bot:"r",seat:"r",nick:"",flip:true,shuffle:false,cheat:10,snd:true,vol:70,board:"forest",theme:"auto",hints:true,hl:true,speed:450};
 try{Object.assign(S,JSON.parse(localStorage.getItem("cc2")||"{}"))}catch(e){}
 if(/^\d+\+\d+$/.test(S.tc)){const[a,b]=S.tc.split("+").map(Number);S.tc="T"+a*60+"+"+b}
 if(!/^(off|T\d+\+\d+)$/.test(S.tc))S.tc="off";
@@ -339,6 +340,10 @@ function shuf(R=Math.random){const r=Array(8).fill(null);r[[0,2,4,6][R()*4|0]]="
 function askPromo(cb){pcb=cb;$("#promo").hidden=false}
 [["Q","queen"],["R","rook"],["B","bishop"],["N","knight"]].forEach(([k,n])=>{const b=document.createElement("button");b.textContent=G[k];b.title=n;b.setAttribute("aria-label",n);b.onclick=()=>{$("#promo").hidden=true;pcb(k)};$("#pp").append(b)});
 const promoMove=(m,bd)=>(bd||B)[m[0]][m[1]][1]==="P"&&(m[2]===0||m[2]===7);
+const LG=(b,col)=>fog?gen(b,col):legal(b,col);
+const fogOn=()=>fog&&mode==="online"&&seat!=="s"&&!over;
+const prem=()=>busy||(mode==="online"&&!!room&&seat!=="s"&&turn!==seat&&!over);
+function visOf(b,col){const v=new Set();for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(p&&p[0]===col)v.add(r*8+c)}for(const m of gen(b,col,true))v.add(m[2]*8+m[3]);return v}
 const hyp=()=>{let h=B;for(const m of pm){if(!h[m[0]][m[1]])break;h=doM(h,m)}return h};
 
 /* ---- game flow ---- */
@@ -356,33 +361,33 @@ draw();
 if(pm.length){const q=pm[0],f=legal(B,"w").find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];if(m){pm=pm.slice(1);later(()=>{if(!over&&!busy&&!menuOpen())play(m);else{pm=[];draw()}},Math.max(150,S.speed/2))}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}}
 const SIDE=c=>c==="w"?"White":"Black";
 function play(m){if(mode==="online")return oPlay(m);tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log((mode==="bot"?"You: ":SIDE(me)+": ")+mn(B,m));B=doM(B,m);rec(me,b0,m);sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);
-if(mode==="local"){turn=them;if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?true:undefined);if(dw)return end(dw);return draw()}
+if(mode==="local"){turn=them;if(fog){if(!kp(B,them))return end(`${SIDE(me)} captured the king! ${SIDE(me)} wins.`,seat===me?true:seat===them?false:undefined);if(!gen(B,them).length)return end("Stalemate. It’s a draw.")}else if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?true:undefined);if(dw)return end(dw);return draw()}
 busy=true;draw();if(dw&&legal(B,"b").length)return end(dw);later(botTurn,S.speed)}
 const menuOpen=()=>!$("#menu").hidden||!$("#set").hidden||!$("#promo").hidden||!$("#ask").hidden||!$("#review").hidden||!$("#imp").hidden;
-function click(r,c){if(over||!started||menuOpen())return;if(mode==="online"&&(!room||seat!==turn||!oOpp()))return;const p=B[r][c];
-if(busy){const H=hyp(),hp=H[r][c];if(sel){const m=gen(H,"w").find(m=>m[0]===sel[0]&&m[1]===sel[1]&&((m[5]===undefined&&m[2]===r&&m[3]===c)||(m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=[...pm,[...m,k]];draw()})}pm=[...pm,m];return draw()}}
-if(hp&&hp[0]==="w"){sel=[r,c];ls=gen(H,"w").filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{if(!sel)pm=[];sel=null;ls=[]}return draw()}
+function click(r,c){if(over||!started||menuOpen())return;const onl=mode==="online";if(onl&&(!room||seat==="s"||!oOpp()))return;const p=B[r][c],me=onl?seat:"w";
+if(busy||(onl&&seat!==turn)){const H=hyp(),hp=H[r][c];if(sel){const m=gen(H,me).find(m=>m[0]===sel[0]&&m[1]===sel[1]&&((m[5]===undefined&&m[2]===r&&m[3]===c)||(m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=[...pm,[...m,k]];draw()})}pm=[...pm,m];return draw()}}
+if(hp&&hp[0]===me){sel=[r,c];ls=gen(H,me).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{if(!sel)pm=[];sel=null;ls=[]}return draw()}
 if(sel){const m=ls.find(m=>m[5]===undefined&&m[2]===r&&m[3]===c)||ls.find(m=>m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c));if(m){if(promoMove(m))return askPromo(k=>play([...m,k]));return play(m)}}
-if(p&&p[0]===turn){sel=[r,c];ls=legal(B,turn).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{sel=null;ls=[]}draw()}
+if(p&&p[0]===turn){sel=[r,c];ls=LG(B,turn).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{sel=null;ls=[]}draw()}
 function nbar(el,name,sub,active,col){el.replaceChildren();const a=avatar({n:name||"?"});a.style.background=`hsl(${hue(name||"?")} 50% 36%)`;const t=document.createElement("span");t.textContent=name;const u=document.createElement("span");u.className="bt";u.textContent=sub||"";el.append(a,t,u);if(tcOn&&col){const k=document.createElement("span");k.className="clk";k.dataset.c=col;k.textContent=fmt(clk[col]);if(clk[col]<10000)k.classList.add("low");el.append(k)}if(active){const d=document.createElement("span");d.className="tdot";d.title="To move";el.append(d)}}
 function bars(fl){const t=$("#ntop"),b=$("#nbot"),you=nameOk?S.nick:"You";
 if(mode==="bot"){nbar(t,persona.n,"Elo "+persona.elo+" · Black",busy&&!over,"b");nbar(b,you,"White",!over&&!busy,"w");return}
 if(mode==="local"){const c1=fl?"w":"b",c2=fl?"b":"w";nbar(t,SIDE(c1),"",!over&&turn===c1,c1);nbar(b,SIDE(c2),"",!over&&turn===c2,c2);return}
 if(mode==="online"&&room){const pl=players(),nm=c=>{if(c===seat)return oNm;const p=pl.find(p=>p.presence.seat===c);return p?nmOf(p):"Waiting…"},c2=seat==="s"?"w":seat,c1=opp(c2);nbar(t,nm(c1),SIDE(c1),!over&&turn===c1,c1);nbar(b,nm(c2),SIDE(c2)+(seat===c2?" · you":""),!over&&turn===c2,c2);return}
 t.replaceChildren();b.replaceChildren()}
-function stat(){if(mode==="online"){if(!oReady||!room)return"Joining room…";const o=oOpp();if(seat==="s")return`Watching · ${SIDE(turn)} to move.`;if(!o)return`Waiting for an opponent in “${oTitle}”${oPlain?" · code "+oPlain:""}…`;return turn===seat?(chk(B,turn)?"Check! Your move.":"Your move."):`Waiting for ${nmOf(o)}…`}
+function stat(){if(mode==="online"){if(!oReady||!room)return"Joining room…";const o=oOpp();if(seat==="s")return`Watching · ${SIDE(turn)} to move.`;if(!o)return`Waiting for an opponent in “${oTitle}”${oPlain?" · code "+oPlain:""}…`;return(fog?"Fog of war · ":"")+(turn===seat?((!fog&&chk(B,turn))?"Check! Your move.":"Your move."):`Waiting for ${nmOf(o)}…${pm.length?" "+pm.length+" premove"+(pm.length>1?"s":"")+" queued. Tap an empty square to clear.":" Tap a piece to premove."}`)}
 if(mode==="local")return`${SIDE(turn)} to move${chk(B,turn)?" — check!":"."}`;return busy?(pm.length?`Bot is thinking… ${pm.length} premove${pm.length>1?"s":""} queued. Tap an empty square to clear.`:"Bot is thinking… tap a piece to premove."):chk(B,"w")?"Check! Your move.":"Your move."}
-function draw(){const g=$("#bd");g.innerHTML="";const Bd=busy&&pm.length?hyp():B;const fl=(mode==="local"&&S.flip&&turn==="b")||(mode==="online"&&seat==="b"),ck=chk(B,"w")?kp(B,"w"):chk(B,"b")?kp(B,"b"):null;
-for(let i=0;i<64;i++){const r=fl?7-(i>>3):i>>3,c=fl?7-(i&7):i&7,p=Bd[r][c],d=document.createElement("div");d.className="sq "+((r+c)%2?"dk":"lt");
-if(S.hl&&last&&((last[0]===r&&last[1]===c)||(last[2]===r&&last[3]===c)))d.classList.add("last");
+function draw(){const g=$("#bd");g.innerHTML="";const Bd=prem()&&pm.length?hyp():B,V=fogOn()?visOf(Bd,seat):null;const fl=(mode==="local"&&S.flip&&turn==="b")||(mode==="online"&&seat==="b"),ck=fog?null:chk(B,"w")?kp(B,"w"):chk(B,"b")?kp(B,"b"):null;
+for(let i=0;i<64;i++){const r=fl?7-(i>>3):i>>3,c=fl?7-(i&7):i&7,p=Bd[r][c],d=document.createElement("div");d.className="sq "+((r+c)%2?"dk":"lt");const vis=!V||V.has(r*8+c);if(!vis)d.classList.add("fog");
+if(S.hl&&last&&vis&&((last[0]===r&&last[1]===c)||(last[2]===r&&last[3]===c)))d.classList.add("last");
 if(sel&&sel[0]===r&&sel[1]===c)d.classList.add("sel");if(ck&&ck[0]===r&&ck[1]===c)d.classList.add("ck");
 pm.forEach((q,i)=>{if((q[0]===r&&q[1]===c)||(q[2]===r&&q[3]===c)){d.classList.add("pm");if(q[2]===r&&q[3]===c)d.dataset.n=i+1}});
 if(S.hints&&ls.some(m=>m[2]===r&&m[3]===c))d.classList.add(p?"cap":"mv");
-if(p){d.textContent=G[p[1]];d.classList.add(p[0])}d.onclick=()=>click(r,c);g.append(d)}
+if(p&&vis){d.textContent=G[p[1]];d.classList.add(p[0])}d.onclick=()=>click(r,c);g.append(d)}
 $("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
 const o=mode==="online"&&room?oOpp():null;
 $("#score").textContent=mode==="online"?`Online · ${oTitle}${oPlain?" · code "+oPlain:""} · ${seat==="s"?"spectating":"you play "+SIDE(seat)}${o?" vs "+nmOf(o):""}`:mode==="local"?"Pass & play · White vs Black":`${persona.n} (Elo ${persona.elo}) · cheats left: ${cheatsLeft} of ${tot}`;bars(fl)}
-function init(o){o=o||{};tcSet(o.tc||S.tc);B=Array.from({length:8},()=>Array(8).fill(null));const row=o.row||(S.shuffle?shuf():[..."RNBQKBNR"]);row.forEach((t,c)=>{B[0][c]="b"+t;B[1][c]="bP";B[6][c]="wP";B[7][c]="w"+t});B.ep=null;{const rs=[];row.forEach((t,c)=>{if(t==="R")rs.push(c)});B.kf={w:row.indexOf("K"),b:row.indexOf("K")};B.cr={w:rs.slice(),b:rs.slice()}}
+function init(o){o=o||{};fog=!!o.fog;tcSet(o.tc||S.tc);B=Array.from({length:8},()=>Array(8).fill(null));const row=o.row||(S.shuffle?shuf():[..."RNBQKBNR"]);row.forEach((t,c)=>{B[0][c]="b"+t;B[1][c]="bP";B[6][c]="wP";B[7][c]="w"+t});B.ep=null;{const rs=[];row.forEach((t,c)=>{if(t==="R")rs.push(c)});B.kf={w:row.indexOf("K"),b:row.indexOf("K")};B.cr={w:rs.slice(),b:rs.slice()}}
 mode=o.mode||(S.mode==="online"?"bot":S.mode);turn="w";{const pool=BOTS.map((b,i)=>i).filter(i=>BOTS[i].elo<2100),i=S.bot==="r"||!BOTS[+S.bot]?(Math.random()<.4?BOTS.findIndex(b=>b.cm>0):pool[Math.random()*pool.length|0]):+S.bot;persona={...BOTS[i],mood:.75+Math.random()*.6}}tot=cheatsLeft=mode==="bot"&&S.cheat&&persona.cm?Math.max(1,Math.round(S.cheat/100*6)):0;cool=0;hm=0;reps={};drawWhy("w");
 gid++;sel=null;ls=[];last=null;snap=null;pm=[];over=false;busy=false;started=true;st={c:0};$("#log").innerHTML="";$("#toast").hidden=true;log(mode==="online"?"Online game. White moves first.":mode==="local"?"Pass & play. White moves first."+(S.shuffle?" Shuffled start.":""):"New game. Your opponent: "+persona.n+" (Elo "+persona.elo+"). "+persona.t+(S.shuffle?" Shuffled start.":""));hist=[];hist0=cp(B);draw()}
 function openMenu(msg){const live=started&&!over;$("#mres").textContent=msg||"";$("#mres").hidden=!msg;$("#go").textContent=live?"New game":over?"Play again":"Start game";$("#rs").hidden=!started;$("#rs").textContent=live?"Resume":"View board";$("#rg").hidden=!live||noRes();$("#dr").hidden=!live;$("#rm").hidden=!(mode==="online"&&over&&room&&seat!=="s");$("#rv").hidden=!(hist.length&&over);$("#menu").hidden=false;renderLobby()}
@@ -400,23 +405,27 @@ $("#bm").onclick=()=>openMenu();
 document.onkeydown=e=>{if(e.key==="Escape"){if(!$("#set").hidden)$("#set").hidden=true;else if(started)$("#menu").hidden=true}};
 /* ---- online play (rooms + presence) ---- */
 const enc=m=>m[5]!==undefined?sqn(m[0],m[1])+sqn(m[0],m[5]):sqn(m[0],m[1])+sqn(m[2],m[3])+(m[4]?m[4].toLowerCase():"");
-function dec(t){if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(t))return null;const r=8-t[1],c="abcdefgh".indexOf(t[0]),r2=8-t[3],c2="abcdefgh".indexOf(t[2]);const L=legal(B,turn),m=L.find(x=>x[5]===undefined&&x[0]===r&&x[1]===c&&x[2]===r2&&x[3]===c2)||L.find(x=>x[5]!==undefined&&x[0]===r&&x[1]===c&&x[2]===r2&&x[5]===c2);return m&&(t[4]?[...m,t[4].toUpperCase()]:m)}
+function dec(t){if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(t))return null;const r=8-t[1],c="abcdefgh".indexOf(t[0]),r2=8-t[3],c2="abcdefgh".indexOf(t[2]);const L=LG(B,turn),m=L.find(x=>x[5]===undefined&&x[0]===r&&x[1]===c&&x[2]===r2&&x[3]===c2)||L.find(x=>x[5]!==undefined&&x[0]===r&&x[1]===c&&x[2]===r2&&x[5]===c2);return m&&(t[4]?[...m,t[4].toUpperCase()]:m)}
 function rng(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return(h>>>0)/4294967296}}
 const ost=t=>{const e=$("#ostat");if(e)e.textContent=t||""};
 const players=()=>room?room.peers().filter(p=>!p.sameTab&&p.presence&&p.presence.cc===1&&(p.presence.seat==="w"||p.presence.seat==="b")&&(!oLockH||ck2(String(p.presence.ck||""))===oLockH)):[];
 const oOpp=()=>seat==="s"?null:players().find(p=>p.presence.seat===opp(seat))||null;
 const nmOf=p=>String(p.presence.nm||"Player").slice(0,16);
 const longest=(a,b)=>String(b.presence.ml||"").length-String(a.presence.ml||"").length;
-function sendP(){if(room)room.presence({cc:1,seat,nm:oNm,n:on_n,ml:oMl.join(" "),sh:oSh,tc:oTc,nr:oNR,tm:seat==="s"?null:Math.round(clk[seat]),ck:oCk,do:null,da:null,dd:null,rs:null,rm:null,tf:null,mine:null,...PX}).catch(()=>{})}
-function oStart(n){on_n=n;const R=rng(oCode+"-"+n);init({mode:"online",tc:oTc,row:oSh?shuf(R):[..."RNBQKBNR"]});oMl=[];PX={};tmSeen={w:-1,b:-1};oHandled=new Set()}
-function oApply(m,q){if(!q)tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log(SIDE(me)+": "+mn(b0,m));oMl.push(enc(m));B=doM(B,m);rec(me,b0,m);if(!q)sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);turn=them;
+function sendP(){if(room)room.presence({cc:1,seat,nm:oNm,n:on_n,ml:oMl.join(" "),sh:oSh,tc:oTc,nr:oNR,fg:oFog,tm:seat==="s"?null:Math.round(clk[seat]),ck:oCk,do:null,da:null,dd:null,rs:null,rm:null,tf:null,mine:null,...PX}).catch(()=>{})}
+function oStart(n){on_n=n;const R=rng(oCode+"-"+n);init({mode:"online",tc:oTc,fog:!!oFog,row:oSh?shuf(R):[..."RNBQKBNR"]});hist.fog=!!oFog;oMl=[];PX={};tmSeen={w:-1,b:-1};oHandled=new Set()}
+function oApply(m,q){if(!q)tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);oMl.push(enc(m));B=doM(B,m);rec(me,b0,m);flog(me,b0,m);if(!q)fsfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);turn=them;
 if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?(seat===me?true:seat===them?false:undefined):undefined);if(dw)end(dw)}
+function flog(me,b0,m){if(!fogOn()||me===seat){log(SIDE(me)+": "+mn(b0,m));return}const t=B[m[2]][m[3]];log(SIDE(me)+": "+(visOf(B,seat).has(m[2]*8+m[3])&&t?NM[t[1]]+" to "+sqn(m[2],m[3]):"moves somewhere in the fog"))}
+const fsfx=(b0,b1,m,them)=>{if(fogOn()&&them===seat&&!visOf(b1,seat).has(m[2]*8+m[3])){snd("move");return}sfx(b0,b1,m,them)};
+function oPm(){if(mode!=="online"||over||!pm.length||turn!==seat||oPmBusy)return;const q=pm[0],f=LG(B,seat).find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];
+if(m){pm=pm.slice(1);oPmBusy=true;later(()=>{oPmBusy=false;if(!over&&turn===seat&&!menuOpen())oPlay(m);else{pm=[];draw()}},Math.max(120,S.speed/3))}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}
 function oPlay(m){oApply(m);sendP();draw()}
 function replay(ml){qt=true;for(const t of String(ml||"").split(" ").filter(Boolean)){const m=dec(t);if(!m)break;oApply(m,true)}qt=false}
 function decide(){if(!room||oReady)return;oReady=true;const ps=players();
 if(!ps.length)seat=oPref==="r"?(Math.random()<.5?"w":"b"):oPref;else if(ps.length===1)seat=opp(ps[0].presence.seat);else seat="s";
 const src=ps.slice().sort((a,b)=>((b.presence.n|0)-(a.presence.n|0))||longest(a,b))[0];
-if(src){oSh=src.presence.sh?1:0;oTc=String(src.presence.tc||"off");oNR=src.presence.nr?1:0;oStart(src.presence.n|0);replay(src.presence.ml)}else{oSh=S.shuffle?1:0;oTc=S.tc;oNR=S.noResign?1:0;oStart(0)}
+if(src){oSh=src.presence.sh?1:0;oTc=String(src.presence.tc||"off");oNR=src.presence.nr?1:0;oFog=src.presence.fg?1:0;oStart(src.presence.n|0);replay(src.presence.ml)}else{oSh=S.shuffle?1:0;oTc=S.tc;oNR=S.noResign?1:0;oFog=S.fog?1:0;oStart(0)}
 sendP();$("#menu").hidden=true;hadOpp=!!oOpp();if(oPlain)log("Room code: "+oPlain+". Share it with the player you invite.","good");draw();oLobby();renderLobby()}
 function oSync(){let ch=false;const ps=players(),mx=ps.reduce((a,p)=>Math.max(a,p.presence.n|0),-1);
 if(mx>on_n){const src=ps.filter(p=>(p.presence.n|0)===mx).sort(longest)[0];if(seat!=="s"&&PX.rm===mx)seat=opp(seat);oStart(mx);replay(src.presence.ml);ch=true}
@@ -430,12 +439,12 @@ if(x.do&&String(x.do).startsWith(on_n+"-")&&!oHandled.has(x.do)&&!over&&seat!=="
 if(PX.mine&&x.da===PX.mine&&!over)end("Draw agreed.");
 if(PX.mine&&x.dd===PX.mine&&!oHandled.has("d"+PX.mine)){oHandled.add("d"+PX.mine);log(`${nmOf(p)} declined the draw.`,"cheat")}}
 if(over&&seat!=="s"&&PX.rm===on_n+1&&ps.some(p=>(p.presence.n|0)===on_n&&p.presence.rm===on_n+1)){seat=opp(seat);oStart(on_n+1);$("#menu").hidden=true;ch=true}
-if(ch)sendP()}
+oPm();if(ch)sendP()}
 function oPeers(chg){if(!room)return;const me=room.peers().find(p=>p.sameTab);if(me)mypeer=me.peer;if(!oReady)return;const ps=players();
 if(seat!=="s"&&ps.some(p=>p.presence.seat===seat&&p.peer<mypeer)){const o=opp(seat);seat=ps.some(p=>p.presence.seat===o)?"s":o;sendP()}
 if(chg&&chg.left&&chg.left.some(p=>p.presence&&p.presence.cc===1&&(p.presence.seat==="w"||p.presence.seat==="b"))&&!over)log("A player left the room.","cheat");
 oSync();const o=oOpp();if(o&&!hadOpp){log(nmOf(o)+" joined the game.","good");snd("sel");if(!over)$("#menu").hidden=true}hadOpp=!!o;oLobby();draw()}
-function oLobby(){if(!LB)return;const w=room&&oReady&&seat!=="s",sig=w?oCode+oTitle+oNm+oLockH:"";if(sig===lobSig)return;lobSig=sig;LB.presence(w?{og:oCode,gt:oTitle,pn:oNm,gh:oLockH||null}:{og:null,gt:null,pn:null,gh:null}).catch(()=>{})}
+function oLobby(){if(!LB)return;const w=room&&oReady&&seat!=="s",sig=w?oCode+oTitle+oNm+oLockH:"";if(sig===lobSig)return;lobSig=sig;LB.presence(w?{og:oCode,gt:oTitle,pn:oNm,gh:oLockH||null,gf:oFog?1:null}:{og:null,gt:null,pn:null,gh:null,gf:null}).catch(()=>{})}
 const H=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^a>>>16,2246822507)^Math.imul(b^b>>>13,3266489909);b=Math.imul(b^b>>>16,2246822507)^Math.imul(a^a>>>13,3266489909);return(4294967296*(2097151&b)+(a>>>0)).toString(36)};
 const ck1=(id,code)=>H("k1:"+id+":"+code),ck2=k=>H("k2:"+k);
 async function oJoin(id,pref,o){if(!LB)return renderLobby();o=o||{};oLeave(true);ost("Joining…");try{room=await LB.join("chess-"+id)}catch(e){room=null;return ost("Couldn’t join that room ("+(e&&e.code||"error")+").")}
@@ -453,16 +462,16 @@ $("#cpn").onclick=()=>$("#cp").hidden=true}
 $("#cpi").onkeydown=e=>{if(e.key==="Enter")$("#cpy").click()};
 function oLeave(silent){un.forEach(f=>{try{f()}catch(e){}});un=[];if(room){try{room.leave()}catch(e){}}room=null;oReady=false;seat="s";PX={};hadOpp=false;lobSig="";oLockH="";oCk="";oPlain="";if(LB)LB.presence({og:null,gnm:null,gside:null}).catch(()=>{});
 if(!silent){over=true;endMsg="You left the room.";log("You left the room.");draw();openMenu("You left the room.")}}
-function rooms(){const m=new Map();if(LB)for(const p of LB.peers()){const x=p.presence;if(!x||!x.og)continue;const r=m.get(x.og)||{id:String(x.og),title:String(x.gt||"Room").slice(0,24),lock:String(x.gh||""),names:[],n:0};r.names.push(String(x.pn||"Player").slice(0,16));r.n++;m.set(x.og,r)}return[...m.values()]}
+function rooms(){const m=new Map();if(LB)for(const p of LB.peers()){const x=p.presence;if(!x||!x.og)continue;const r=m.get(x.og)||{id:String(x.og),title:String(x.gt||"Room").slice(0,24),lock:String(x.gh||""),fog:!!x.gf,names:[],n:0};r.names.push(String(x.pn||"Player").slice(0,16));r.n++;m.set(x.og,r)}return[...m.values()]}
 function renderLobby(){dupCheck();const L=$("#olist");if(!L)return;L.innerHTML="";const lr=$("#lr");if(lr)lr.hidden=!room;
 if(room){ost(oReady?`You’re in “${oTitle}”${oLockH?" 🔒":""}${oPlain?` (code: ${oPlain})`:""}${seat==="s"?" as a spectator.":". Other players can see your room in the list."}`:"Joining…");return}
-if(!LB){ost("Online play isn’t available in this view. Open the published artifact while signed in; other players must be in your organization or invited to it.");return}
+if(!LB){ost(window.claude?"Online play isn’t available in this view. Open the published artifact while signed in; other players must be in your organization or invited to it.":"Online play needs the Firebase setup in config.js. See README.md.");return}
 const rs=rooms();ost((rs.length?`${rs.length} ${rs.length===1?"room":"rooms"} open right now. Tap one to join.`:"No rooms yet. Create one and it shows up here for everyone.")+" Updated "+new Date().toLocaleTimeString()+".");
-rs.forEach(r=>{const row=document.createElement("div");row.className="og";const t=document.createElement("div"),a=document.createElement("div"),c=document.createElement("div");a.className="bn";a.textContent=(r.lock?"🔒 ":"")+r.title;c.className="bt";c.textContent=r.names.join(" vs ")+" · "+Math.min(r.n,2)+"/2 players";t.append(a,c);const b=document.createElement("button");b.textContent=r.n>=2?"Watch":"Join";b.onclick=()=>oEnter(r);row.append(t,b);L.append(row)})}
+rs.forEach(r=>{const row=document.createElement("div");row.className="og";const t=document.createElement("div"),a=document.createElement("div"),c=document.createElement("div");a.className="bn";a.textContent=(r.lock?"🔒 ":"")+r.title;c.className="bt";c.textContent=r.names.join(" vs ")+" · "+Math.min(r.n,2)+"/2 players"+(r.fog?" · fog of war":"");t.append(a,c);const b=document.createElement("button");b.textContent=r.n>=2?"Watch":"Join";b.onclick=()=>oEnter(r);row.append(t,b);L.append(row)})}
 $("#mk").onclick=oCreate;
 $("#lr").onclick=()=>oLeave();
 $("#rm").onclick=()=>{PX.rm=on_n+1;sendP();ost("Rematch requested. Waiting for your opponent…")};
-(async()=>{try{LB=(window.claude&&await claude.use("room"))||null}catch(e){LB=null}if(LB){try{lbUn=LB.onPeers(()=>renderLobby(),()=>{})}catch(e){}}nameLive();renderLobby()})();
+(async()=>{try{LB=await getRooms()}catch(e){LB=null}if(LB){try{lbUn=LB.onPeers(()=>renderLobby(),()=>{})}catch(e){}}nameLive();renderLobby()})();
 
 /* ---- game review ---- */
 let hist=[],hist0=null,lastNames=null,ri=0,rvTok=0,rvFlip=false;
@@ -470,7 +479,7 @@ function rvSides(){if(mode==="bot")return{w:nameOk?S.nick:"You",b:persona.n};if(
 function sanBase(b0,m){if(m[5]!==undefined)return m[5]<m[1]?"O-O-O":"O-O";const P=b0[m[0]][m[1]][1],cap=isCap(b0,m);return(P==="P"?(cap?"abcdefgh"[m[1]]+"x":""):P+(cap?"x":""))+sqn(m[2],m[3])+(P==="P"&&(m[2]===0||m[2]===7)?"="+(m[4]||"Q"):"")}
 function rec(side,b0,m,sp){const them=opp(side),P=b0[m[0]]&&b0[m[0]][m[1]],tags=[];
 if(!sp&&P){if(m[5]!==undefined)tags.push("castle");else{if(isCap(b0,m))tags.push(P[1]==="P"&&!b0[m[2]][m[3]]?"en passant":"capture");if(P[1]==="P"&&(m[2]===0||m[2]===7))tags.push("promotion")}}
-if(chk(B,them))tags.push(legal(B,them).length?"check":"checkmate");
+if(fog){if(!kp(B,them))tags.push("king captured")}else if(chk(B,them))tags.push(legal(B,them).length?"check":"checkmate");
 hist.push({side,m,text:sp?sp.msg:mn(b0,m),san:sp?"✦ "+sp.t:sanBase(b0,m)+(tags.includes("checkmate")?"#":tags.includes("check")?"+":""),kind:sp?"special":"normal",sub:sp?sp.t:"",tags,b:cp(B)})}
 const CLSN=["Brilliant","Great","Best","Excellent","Book","Good","Inaccuracy","Miss","Mistake","Blunder"],CLSB=["Best","Good","Inaccuracy","Mistake","Blunder"];
 const CLC={Excellent:["#7cb342","✔","#fff"],Brilliant:["#1baca6","!!","#fff"],Great:["#5c8bb0","!","#fff"],Book:["#a88865","B","#fff"],Miss:["#e0605a","✕","#fff"],Best:["#81b64c","★","#fff"],Good:["#95b776","✓","#fff"],Inaccuracy:["#f7c631","?!","#222"],Mistake:["#e58f2a","?","#fff"],Blunder:["#ca3431","??","#fff"],Special:["#8e24aa","✦","#fff"]};
@@ -547,7 +556,9 @@ const clampEv=v=>Math.max(-1500,Math.min(1500,v));
 function rvRating(side){if(hist.ratings&&hist.ratings[side])return hist.ratings[side];return mode==="bot"&&side==="b"&&persona?persona.elo:(+S.rating||1000)}
 function fin(h,i,raw){const e=h[i],r=rvRating(e.side),wp=c=>winPct(c,r),drop=Math.max(0,wp(raw.mb)-wp(raw.ma)),gap=raw.sec==null?0:Math.max(0,wp(raw.mb)-wp(raw.sec)),loss=Math.min(1500,Math.max(0,raw.mb-raw.ma));
 const cls=classify(h,i,{isBest:raw.isBest,drop,gap,sac:raw.sacV>=(r<1200?150:r<1600?200:r<2000?250:300),wpA:wp(raw.ma),wpB:wp(raw.mb),wpS:raw.sec==null?null:wp(raw.sec),note:raw.note,recap:raw.recap}),top=cls==="Brilliant"||cls==="Great"||cls==="Book";
-return{loss:top?0:loss,cls,drop,acc:top?100:Math.max(0,Math.min(100,103.1668*Math.exp(-0.04354*drop)-3.1669)),best:raw.best||"",bmv:raw.bmv||null,evW:raw.evW,mate:raw.mate||0,note:raw.note||"",raw}}
+let why="";if(cls!=="Brilliant"&&cls!=="Book"&&raw.sacV>=100){const thr=r<1200?150:r<1600?200:r<2000?250:300,near=raw.isBest||drop<=2;
+if(!near)why="it isn’t the engine’s best or nearly best move";else if(raw.sacV<thr)why="the material given up (about "+(raw.sacV/100).toFixed(1)+" pawns) is below the "+(thr/100).toFixed(1)+"-pawn minimum for a rating of "+r;else if(wp(raw.ma)<42)why="you end up in a worse position";else if(raw.sec!=null&&wp(raw.sec)>90)why="you were completely winning anyway: the next-best move wins too"}
+return{loss:top?0:loss,cls,drop,acc:top?100:Math.max(0,Math.min(100,103.1668*Math.exp(-0.04354*drop)-3.1669)),best:raw.best||"",bmv:raw.bmv||null,evW:raw.evW,mate:raw.mate||0,note:raw.note||"",why,raw}}
 function analyzePly(i){const e=hist[i],bef=i?hist[i-1].b:hist0,col=e.side,ev0=ev(bef,col),ev1=ev(e.b,col),evAfter=clampEv(qs(e.b,"w",-1e9,1e9,2));if(e.kind==="special")return{sp:1,swing:ev1-ev0,evW:evAfter};
 const ms=legal(bef,col),want=ms.find(x=>[0,1,2,3,5].every(k=>x[k]===e.m[k]));if(!want)return{sp:1,swing:ev1-ev0,evW:evAfter};
 let as,bs,bm=want,sec=null;const sc=m=>{const a2=doM(bef,m),rs=legal(a2,opp(col));if(!rs.length)return chk(a2,opp(col))?1e5:0;if(rs.some(r=>{const a3=doM(a2,r);return chk(a3,col)&&!legal(a3,col).length}))return-1e5;return-ns(a2,opp(col),1,-1e9,1e9)};
@@ -578,7 +589,7 @@ if(!e){box.textContent="Starting position. Step through the game with ›, or th
 const k=kOf(e);if(k){const i=ico(k);i.classList.add("big");box.append(i)}
 const t=document.createElement("div"),h=document.createElement("div"),sub=document.createElement("div");sub.className="sub";h.style.fontWeight="700";
 if(e.kind==="special"){h.textContent=e.san+" is a special move";sub.textContent="Not a normal chess move. "+e.text+(e.a&&e.a.swing?" Material swing for the mover: "+(e.a.swing>0?"+":"")+(e.a.swing/100).toFixed(1)+" pawns.":"")}
-else if(e.a){h.textContent=e.san+" "+PH[e.a.cls];const ev=e.tags.includes("checkmate")?"Checkmate":e.a.mate?"Mate in "+Math.abs(e.a.mate):"Eval "+(e.a.evW>0?"+":"")+(e.a.evW/100).toFixed(1);sub.textContent=(XT[e.a.cls]?XT[e.a.cls]+" ":"")+nm[e.side]+" · "+ev+(e.a.note?" · "+e.a.note:"")+(e.a.best&&(e.a.loss>50||e.a.cls==="Miss")?" · Best was "+e.a.best:"")+(e.tags.length&&!e.tags.includes("checkmate")?" · "+e.tags.join(", "):"")}
+else if(e.a){h.textContent=e.san+" "+PH[e.a.cls];const ev=e.tags.includes("checkmate")?"Checkmate":e.a.mate?"Mate in "+Math.abs(e.a.mate):"Eval "+(e.a.evW>0?"+":"")+(e.a.evW/100).toFixed(1);sub.textContent=(XT[e.a.cls]?XT[e.a.cls]+" ":"")+nm[e.side]+" · "+ev+(e.a.note?" · "+e.a.note:"")+(e.a.best&&(e.a.loss>50||e.a.cls==="Miss")?" · Best was "+e.a.best:"")+(e.a.why?" · Not Brilliant because "+e.a.why:"")+(e.tags.length&&!e.tags.includes("checkmate")?" · "+e.tags.join(", "):"")}
 else{h.textContent=e.san;sub.textContent=nm[e.side]+" · analyzing…"}
 t.append(h,sub);box.append(t)}
 function rvCell(c,e){c.innerHTML="";const k=kOf(e);if(k)c.append(ico(k));const t=document.createElement("span");t.textContent=e.san;c.append(t)}
@@ -638,7 +649,7 @@ for(let j=0;j<sus.length;j++){if(tok!==rvTok||h!==hist)return"abort";const i=sus
 for(const k of[i,i+1]){const b=k?h[k-1].b:hist0,stm=k?opp(h[k-1].side):"w";if(!okPos(b,stm))continue;try{pa[k]=await sfGo(fenOf(b,stm,Math.floor(k/2)+1),long,is960(b))}catch(e){}}
 for(const q of[i,i+1])if(q<h.length&&h[q].a&&h[q].a.raw){delete h[q].a;sfRate(h,q,pa)}rvRecalc()}
 return"done"}
-async function rvAnalyze(){rvBook();const tok=++rvTok,h=hist,prog=$("#rvprog"),eng=$("#rveng"),note=$("#rvnote");eng.textContent="";note.textContent="";
+async function rvAnalyze(){if(hist.fog){$("#rveng").textContent="Fog of war game: all pieces are shown in the replay.";$("#rvnote").textContent="There is no check in fog of war, so chess engines can’t rate these moves.";$("#rvprog").textContent="";return}rvBook();const tok=++rvTok,h=hist,prog=$("#rvprog"),eng=$("#rveng"),note=$("#rvnote");eng.textContent="";note.textContent="";
 if(h.every(e=>e.a)){prog.textContent="Analysis complete.";eng.textContent=hist.engine||"";note.textContent=hist.note||"";rvSummary();rvGraph();return}
 eng.textContent="Loading Stockfish 18 (about 10 MB)…";prog.textContent="";let ok=true;try{await sfLoad()}catch(e){ok=false}
 if(tok!==rvTok||h!==hist)return;
@@ -752,7 +763,7 @@ $("#alog").onclick=async()=>{busyBtns(true);nstat("Logging in…");const r=await
 $("#agst").onclick=()=>{guestOK=true;syncNick()};
 $("#aout").onclick=()=>clearSession("Logged out. Your name stays reserved for you: log in again any time.");
 $("#adel").onclick=()=>{$("#menu").hidden=true;ask("Delete the account “"+S.nick+"”? The name becomes free for anyone to take.",async()=>{try{await DBN.doc("accounts/"+acctKey).delete();clearSession("Account deleted. The name is free again.")}catch(e){nstat(e&&e.code==="not_granted"?"Only the device that created this account can delete it.":"Couldn’t delete it ("+(e&&e.code||"error")+").")}$("#menu").hidden=false},()=>{$("#menu").hidden=false})};
-$("#orf").onclick=async()=>{const b=$("#orf");b.disabled=true;b.textContent="Refreshing…";try{if(lbUn)lbUn();LB=(window.claude&&await claude.use("room"))||null;lbUn=LB?LB.onPeers(()=>renderLobby(),()=>{}):null;lobSig="";oLobby()}catch(e){}renderLobby();b.disabled=false;b.textContent="Refresh"};
+$("#orf").onclick=async()=>{const b=$("#orf");b.disabled=true;b.textContent="Refreshing…";try{if(lbUn)lbUn();LB=await getRooms();lbUn=LB?LB.onPeers(()=>renderLobby(),()=>{}):null;lobSig="";oLobby()}catch(e){}renderLobby();b.disabled=false;b.textContent="Refresh"};
 /* ---- account storage: Claude runtime, Firebase (for GitHub Pages), or this device only ---- */
 const CFG=window.CHESS_CONFIG||{};
 const snapOf=(p,v)=>({id:p.split("/").pop(),exists:v!==null&&v!==undefined,data:()=>v});
@@ -769,15 +780,38 @@ delete:async()=>{let u=null;if(p.startsWith("accounts/")){const v=await call("GE
 acquire:async()=>({acquired:true}),
 onSnapshot:(next,err)=>{let last;const run=async()=>{try{const v=await call("GET",p),j=JSON.stringify(v);if(j!==last){last=j;next(snapOf(p,v))}}catch(e){if(err)err(e)}};run();const t=setInterval(run,5000);return()=>clearInterval(t)}});
 const collection=c=>({where:(f,op,v)=>({get:async()=>{if(c==="accounts"&&f==="uid"&&v===uid){const u=await call("GET","users/"+v);if(!u||!u.key)return{docs:[]};const a=await call("GET","accounts/"+u.key);return{docs:a&&a.uid===v?[snapOf("accounts/"+u.key,a)]:[]}}return{docs:[]}}})});
-return{db:{fb:true,doc,collection},uid:async()=>{await auth();return uid}}}
+return{db:{fb:true,doc,collection},uid:async()=>{await auth();return uid},call,ready:auth,getUid:()=>uid,beacon:p=>{if(tok)fetch(base+"/"+p+".json?auth="+encodeURIComponent(tok),{method:"DELETE",keepalive:true}).catch(()=>{})}}}
+function fbRooms(fb){const tab=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6),open=new Set();
+const strip=p=>{const q={...p};delete q._;return Object.freeze(q)};
+addEventListener("pagehide",()=>{open.forEach(k=>fb.beacon(k))});
+const mk=(path,fast)=>{let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),timers=[],seen={},started=false;const key=path+"/"+tab;
+const entry=(id,x)=>({peer:id,sameTab:id===tab,isMe:id===tab,presence:strip(x.p)});
+const list=()=>[...map].map(([id,x])=>entry(id,x));
+const setMap=m=>{const prev=map;map=m;const joined=[],left=[],updated=[];for(const[id,x]of map){const o=prev.get(id);if(!o)joined.push(entry(id,x));else if(JSON.stringify(o.p)!==JSON.stringify(x.p))updated.push(entry(id,x))}for(const[id,o]of prev)if(!map.has(id))left.push(entry(id,o));
+if(joined.length||left.length||updated.length){const peers=list();subs.forEach(h=>{try{h({peers,joined,left,updated})}catch(e){}})}};
+const fail=e=>errs.forEach(h=>{try{h(e)}catch(x){}});
+const put=async()=>{if(!alive)return;try{await fb.call("PUT",key,{u:fb.getUid(),t:{".sv":"timestamp"},p:mine})}catch(e){fail(e)}};
+const poll=async()=>{if(!alive||(!fast&&typeof document!=="undefined"&&document.hidden))return;try{const v=await fb.call("GET",path)||{},now=Date.now(),m=new Map();
+for(const id in v){const x=v[id];if(!x||!x.p||id===tab)continue;const s=seen[id];if(!s||s.t!==x.t)seen[id]={t:x.t,at:now};else if(now-s.at>14000)continue;m.set(id,{p:x.p})}
+m.set(tab,{p:{...mine}});setMap(m)}catch(e){fail(e)}};
+const start=()=>{if(started)return;started=true;open.add(key);put();poll();timers.push(setInterval(put,5000),setInterval(poll,fast?800:4000))};
+map.set(tab,{p:{...mine}});if(fast)start();
+return{peers:()=>list(),
+presence:async p=>{for(const k in p){if(p[k]===null)delete mine[k];else mine[k]=p[k]}mine._=1;const m=new Map(map);m.set(tab,{p:{...mine}});setMap(m);start();await put()},
+onPeers:(h,e)=>{subs.add(h);if(e)errs.add(e);start();return()=>{subs.delete(h);if(e)errs.delete(e)}},
+leave:async()=>{alive=false;timers.forEach(clearInterval);open.delete(key);try{await fb.call("DELETE",key)}catch(e){}}}};
+const lobby=mk("lobby",false);
+return{peers:lobby.peers,presence:lobby.presence,onPeers:lobby.onPeers,join:async name=>{if(!/^[a-z0-9-]{3,40}$/.test(name))throw{code:"bad_name"};await fb.ready();return mk("rooms/"+name,true)}}}
 function localAdapter(){const mem={},keys=()=>{try{return Object.keys(localStorage).filter(k=>k.startsWith("ccdb:")).map(k=>k.slice(5))}catch(e){return Object.keys(mem)}};
 const g=k=>{try{const v=localStorage.getItem("ccdb:"+k);return v===null?null:JSON.parse(v)}catch(e){return mem[k]!==undefined?mem[k]:null}},put=(k,v)=>{try{localStorage.setItem("ccdb:"+k,JSON.stringify(v))}catch(e){mem[k]=v}},del=k=>{try{localStorage.removeItem("ccdb:"+k)}catch(e){delete mem[k]}};
 let uid=null;try{uid=localStorage.getItem("cc_local_uid")}catch(e){}if(!uid){uid="local-"+Math.random().toString(36).slice(2,10);try{localStorage.setItem("cc_local_uid",uid)}catch(e){}}
 const doc=p=>({get:async()=>snapOf(p,g(p)),set:async v=>put(p,v),delete:async()=>del(p),acquire:async()=>({acquired:true}),onSnapshot:next=>{next(snapOf(p,g(p)));return()=>{}}});
 const collection=c=>({where:(f,op,v)=>({get:async()=>({docs:keys().filter(k=>k.startsWith(c+"/")).map(k=>snapOf(k,g(k))).filter(x=>x.data()&&x.data()[f]===v)})})});
 return{db:{local:true,doc,collection},uid}}
-async function makeBackend(){if(CFG.firebase&&CFG.firebase.apiKey&&CFG.firebase.databaseURL){try{const a=fbAdapter(CFG.firebase),u=await a.uid();backendKind="firebase";return{db:a.db,uid:u}}catch(e){}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
-(async()=>{try{if(window.claude){DBN=await claude.use("db");const U=await claude.use("user");UID=U?await U.id():null}else{const be=await makeBackend();DBN=be.db;UID=be.uid}}catch(e){DBN=null;UID=null}
+async function makeBackend(){if(CFG.firebase&&CFG.firebase.apiKey&&CFG.firebase.databaseURL){try{const a=fbAdapter(CFG.firebase),u=await a.uid();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
+let backendP=null;const getBackend=()=>backendP||(backendP=makeBackend());
+const getRooms=async()=>window.claude?((await claude.use("room"))||null):((await getBackend()).rooms||null);
+(async()=>{try{if(window.claude){DBN=await claude.use("db");const U=await claude.use("user");UID=U?await U.id():null}else{const be=await getBackend();DBN=be.db;UID=be.uid}}catch(e){DBN=null;UID=null}
 if(!DBN){guestOK=true;syncNick();if(B)draw();return}
 let st=null;try{st=JSON.parse(localStorage.getItem("cc_acct")||"null")}catch(e){}
 try{if(st&&st.k){const sn=await DBN.doc("accounts/"+st.k).get(),d=hasAcct(sn)&&sn.data();if(d&&d.hash===st.h){setSession(d.name,st.k,st.h);return}}
