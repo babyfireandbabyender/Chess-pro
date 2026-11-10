@@ -4,6 +4,6 @@
 window.CHESS_CONFIG = {
   firebase: {
     apiKey: "",        // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS"
-    databaseURL: ""    // e.g. "https://console.firebase.google.com/u/3/project/chess-c82cd/database/chess-c82cd-default-rtdb/data/~2F"
+    databaseURL: ""    // e.g. "https://chess-c82cd-default-rtdb.asia-southeast1.firebasedatabase.app/"
   }
 };
