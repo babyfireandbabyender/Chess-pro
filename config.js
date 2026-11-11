@@ -3,7 +3,7 @@
 // the browser that created them and online rooms are not available.
 window.CHESS_CONFIG = {
   firebase: {
-    apiKey: "",     // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS-w_VTVlNQM"
-    projectId: ""   // Firebase "chess-c82cd", e.g. "my-chess-1234"
+    apiKey: "",     // Firebase web app "apiKey"
+    projectId: ""   // Firebase "Project ID", e.g. "my-chess-1234"
   }
 };

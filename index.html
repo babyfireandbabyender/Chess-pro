@@ -767,48 +767,48 @@ $("#orf").onclick=async()=>{const b=$("#orf");b.disabled=true;b.textContent="Ref
 /* ---- account storage: Claude runtime, Firebase (for GitHub Pages), or this device only ---- */
 const CFG=window.CHESS_CONFIG||{};
 const snapOf=(p,v)=>({id:p.split("/").pop(),exists:v!==null&&v!==undefined,data:()=>v});
-function fbAdapter(cfg){const base=cfg.databaseURL.replace(/\/+$/,""),key=cfg.apiKey,idU=cfg.identityURL||"https://identitytoolkit.googleapis.com",tkU=cfg.tokenURL||"https://securetoken.googleapis.com";let tok=null,exp=0,uid=null,rt=null;try{rt=localStorage.getItem("cc_fb_rt")}catch(e){}
-const keep=()=>{try{localStorage.setItem("cc_fb_rt",rt)}catch(e){}};
-async function auth(){if(tok&&Date.now()<exp-300000)return tok;
-if(rt){try{const r=await fetch(tkU+"/v1/token?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"grant_type=refresh_token&refresh_token="+encodeURIComponent(rt)});if(r.ok){const j=await r.json();tok=j.id_token;rt=j.refresh_token;uid=j.user_id;exp=Date.now()+(+j.expires_in)*1000;keep();return tok}}catch(e){}}
-const r=await fetch(idU+"/v1/accounts:signUp?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:'{"returnSecureToken":true}'});if(!r.ok)throw{code:"auth_failed"};const j=await r.json();tok=j.idToken;rt=j.refreshToken;uid=j.localId;exp=Date.now()+(+j.expiresIn)*1000;keep();return tok}
-async function call(method,path,body){const t=await auth(),r=await fetch(base+"/"+path+".json?auth="+encodeURIComponent(t),{method,headers:body===undefined?{}:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
-if(r.status===401||r.status===403)throw{code:"not_granted"};if(!r.ok)throw{code:"http_"+r.status};return method==="DELETE"?null:await r.json()}
-const doc=p=>({get:async()=>snapOf(p,p.startsWith("names/")?null:await call("GET",p)),
-set:async d=>{await call("PUT",p,d);if(p.startsWith("accounts/")&&d&&d.uid)await call("PUT","users/"+d.uid,{key:p.split("/")[1]})},
-delete:async()=>{let u=null;if(p.startsWith("accounts/")){const v=await call("GET",p);u=v&&v.uid}await call("DELETE",p);if(u&&u===uid)await call("DELETE","users/"+u)},
-acquire:async()=>({acquired:true}),
-onSnapshot:(next,err)=>{let last;const run=async()=>{try{const v=await call("GET",p),j=JSON.stringify(v);if(j!==last){last=j;next(snapOf(p,v))}}catch(e){if(err)err(e)}};run();const t=setInterval(run,5000);return()=>clearInterval(t)}});
-const collection=c=>({where:(f,op,v)=>({get:async()=>{if(c==="accounts"&&f==="uid"&&v===uid){const u=await call("GET","users/"+v);if(!u||!u.key)return{docs:[]};const a=await call("GET","accounts/"+u.key);return{docs:a&&a.uid===v?[snapOf("accounts/"+u.key,a)]:[]}}return{docs:[]}}})});
-return{db:{fb:true,doc,collection},uid:async()=>{await auth();return uid},call,ready:auth,getUid:()=>uid,beacon:p=>{if(tok)fetch(base+"/"+p+".json?auth="+encodeURIComponent(tok),{method:"DELETE",keepalive:true}).catch(()=>{})}}}
-function fbRooms(fb){const tab=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6),open=new Set();
+const FB_VER="10.14.1";
+const loadJs=u=>new Promise((res,rej)=>{const e=document.createElement("script");e.src=u;e.onload=res;e.onerror=()=>rej(new Error("load "+u));document.head.append(e)});
+function fbAdapter(cfg){const app=firebase.apps.length?firebase.app():firebase.initializeApp({apiKey:cfg.apiKey,projectId:cfg.projectId,authDomain:cfg.authDomain||cfg.projectId+".firebaseapp.com"});
+const fa=firebase.auth(),fs=firebase.firestore();let uid=null;
+const ready=async()=>{if(uid)return;if(!fa.currentUser)await new Promise(r=>{const u=fa.onAuthStateChanged(()=>{u();r()})});if(!fa.currentUser)await fa.signInAnonymously();uid=fa.currentUser.uid};
+const norm=e=>{const c=String(e&&e.code||"");return{code:/permission-denied/.test(c)?"not_granted":/already-exists|aborted/.test(c)?"conflict":(c||"error")}};
+const w=p=>p.then(x=>x,e=>{throw norm(e)});
+const doc=p=>{const r=fs.doc(p),legacy=p.startsWith("names/");return{get:async()=>{if(legacy)return snapOf(p,null);await ready();const x=await w(r.get());return snapOf(p,x.exists?x.data():null)},set:async d=>{await ready();await w(r.set(d))},delete:async()=>{await ready();await w(r.delete())},acquire:async()=>({acquired:true}),
+onSnapshot:(n,e)=>r.onSnapshot(x=>n(snapOf(p,x.exists?x.data():null)),e||(()=>{}))}};
+const collection=c=>({where:(f,op,v)=>({get:async()=>{if(c==="names")return{docs:[]};await ready();const q=await w(fs.collection(c).where(f,op,v).get());return{docs:q.docs.map(d=>snapOf(c+"/"+d.id,d.data()))}}})});
+return{db:{fb:true,doc,collection},uid:async()=>{await ready();return uid},ready,getUid:()=>uid,fs}}
+function fbRooms(fb){const fs=fb.fs,tab=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6),open=new Set();
 const strip=p=>{const q={...p};delete q._;return Object.freeze(q)};
-addEventListener("pagehide",()=>{open.forEach(k=>fb.beacon(k))});
-const mk=(path,fast)=>{let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),timers=[],seen={},started=false;const key=path+"/"+tab;
+const mk=(colPath,fast)=>{const HB=fast?6000:20000,STALE=fast?20000:70000;let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),seen={},docs=new Map(),unsub=null,timers=[],started=false;const ref=fs.collection(colPath).doc(tab);
 const entry=(id,x)=>({peer:id,sameTab:id===tab,isMe:id===tab,presence:strip(x.p)});
 const list=()=>[...map].map(([id,x])=>entry(id,x));
 const setMap=m=>{const prev=map;map=m;const joined=[],left=[],updated=[];for(const[id,x]of map){const o=prev.get(id);if(!o)joined.push(entry(id,x));else if(JSON.stringify(o.p)!==JSON.stringify(x.p))updated.push(entry(id,x))}for(const[id,o]of prev)if(!map.has(id))left.push(entry(id,o));
 if(joined.length||left.length||updated.length){const peers=list();subs.forEach(h=>{try{h({peers,joined,left,updated})}catch(e){}})}};
 const fail=e=>errs.forEach(h=>{try{h(e)}catch(x){}});
-const put=async()=>{if(!alive)return;try{await fb.call("PUT",key,{u:fb.getUid(),t:{".sv":"timestamp"},p:mine})}catch(e){fail(e)}};
-const poll=async()=>{if(!alive||(!fast&&typeof document!=="undefined"&&document.hidden))return;try{const v=await fb.call("GET",path)||{},now=Date.now(),m=new Map();
-for(const id in v){const x=v[id];if(!x||!x.p||id===tab)continue;const s=seen[id];if(!s||s.t!==x.t)seen[id]={t:x.t,at:now};else if(now-s.at>14000)continue;m.set(id,{p:x.p})}
-m.set(tab,{p:{...mine}});setMap(m)}catch(e){fail(e)}};
-const start=()=>{if(started)return;started=true;open.add(key);put();poll();timers.push(setInterval(put,5000),setInterval(poll,fast?800:4000))};
+const put=async()=>{if(!alive)return;try{await fb.ready();await ref.set({u:fb.getUid(),t:Date.now(),p:mine})}catch(e){fail({code:String(e&&e.code||"error").replace("permission-denied","not_granted")})}};
+const rebuild=()=>{const now=Date.now(),m=new Map();for(const[id,x]of docs){const s=seen[id];if(!s||s.t!==x.t)seen[id]={t:x.t,at:now};else if(now-s.at>STALE)continue;m.set(id,{p:x.p})}m.set(tab,{p:{...mine}});setMap(m)};
+const listen=()=>{if(unsub||!alive)return;unsub=fs.collection(colPath).onSnapshot(sn=>{docs=new Map();sn.forEach(d=>{const x=d.data();if(x&&x.p&&d.id!==tab)docs.set(d.id,x)});rebuild()},e=>fail({code:String(e&&e.code||"error").replace("permission-denied","not_granted")}))};
+const unlisten=()=>{if(unsub){unsub();unsub=null}};
+const start=()=>{if(started)return;started=true;open.add(ref);put();timers.push(setInterval(put,HB),setInterval(rebuild,3000));if(fast)listen()};
+if(!fast&&typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!subs.size)return;document.hidden?unlisten():listen()});
 map.set(tab,{p:{...mine}});if(fast)start();
 return{peers:()=>list(),
 presence:async p=>{for(const k in p){if(p[k]===null)delete mine[k];else mine[k]=p[k]}mine._=1;const m=new Map(map);m.set(tab,{p:{...mine}});setMap(m);start();await put()},
-onPeers:(h,e)=>{subs.add(h);if(e)errs.add(e);start();return()=>{subs.delete(h);if(e)errs.delete(e)}},
-leave:async()=>{alive=false;timers.forEach(clearInterval);open.delete(key);try{await fb.call("DELETE",key)}catch(e){}}}};
+onPeers:(h,e)=>{subs.add(h);if(e)errs.add(e);start();if(!fast&&!(typeof document!=="undefined"&&document.hidden))listen();return()=>{subs.delete(h);if(e)errs.delete(e);if(!fast&&!subs.size)unlisten()}},
+leave:async()=>{alive=false;timers.forEach(clearInterval);unlisten();open.delete(ref);try{await ref.delete()}catch(e){}}}};
+addEventListener("pagehide",()=>{open.forEach(r=>{try{r.delete()}catch(e){}})});
 const lobby=mk("lobby",false);
-return{peers:lobby.peers,presence:lobby.presence,onPeers:lobby.onPeers,join:async name=>{if(!/^[a-z0-9-]{3,40}$/.test(name))throw{code:"bad_name"};await fb.ready();return mk("rooms/"+name,true)}}}
+return{peers:lobby.peers,presence:lobby.presence,onPeers:lobby.onPeers,join:async name=>{if(!/^[a-z0-9-]{3,40}$/.test(name))throw{code:"bad_name"};await fb.ready();return mk("rooms/"+name+"/peers",true)}}}
 function localAdapter(){const mem={},keys=()=>{try{return Object.keys(localStorage).filter(k=>k.startsWith("ccdb:")).map(k=>k.slice(5))}catch(e){return Object.keys(mem)}};
 const g=k=>{try{const v=localStorage.getItem("ccdb:"+k);return v===null?null:JSON.parse(v)}catch(e){return mem[k]!==undefined?mem[k]:null}},put=(k,v)=>{try{localStorage.setItem("ccdb:"+k,JSON.stringify(v))}catch(e){mem[k]=v}},del=k=>{try{localStorage.removeItem("ccdb:"+k)}catch(e){delete mem[k]}};
 let uid=null;try{uid=localStorage.getItem("cc_local_uid")}catch(e){}if(!uid){uid="local-"+Math.random().toString(36).slice(2,10);try{localStorage.setItem("cc_local_uid",uid)}catch(e){}}
 const doc=p=>({get:async()=>snapOf(p,g(p)),set:async v=>put(p,v),delete:async()=>del(p),acquire:async()=>({acquired:true}),onSnapshot:next=>{next(snapOf(p,g(p)));return()=>{}}});
 const collection=c=>({where:(f,op,v)=>({get:async()=>({docs:keys().filter(k=>k.startsWith(c+"/")).map(k=>snapOf(k,g(k))).filter(x=>x.data()&&x.data()[f]===v)})})});
 return{db:{local:true,doc,collection},uid}}
-async function makeBackend(){if(CFG.firebase&&CFG.firebase.apiKey&&CFG.firebase.databaseURL){try{const a=fbAdapter(CFG.firebase),u=await a.uid();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
+async function makeBackend(){const f=CFG.firebase;if(f&&f.apiKey&&(f.projectId||f.databaseURL)){try{const cfg={...f};if(!cfg.projectId){const m=/\/\/([^./]+?)(?:-default-rtdb)?\./.exec(cfg.databaseURL||"");cfg.projectId=m&&m[1]}
+if(!window.firebase)for(const m of["app","auth","firestore"])await loadJs("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-"+m+"-compat.js");
+const a=fbAdapter(cfg),u=await a.uid();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
 let backendP=null;const getBackend=()=>backendP||(backendP=makeBackend());
 const getRooms=async()=>window.claude?((await claude.use("room"))||null):((await getBackend()).rooms||null);
 (async()=>{try{if(window.claude){DBN=await claude.use("db");const U=await claude.use("user");UID=U?await U.id():null}else{const be=await getBackend();DBN=be.db;UID=be.uid}}catch(e){DBN=null;UID=null}

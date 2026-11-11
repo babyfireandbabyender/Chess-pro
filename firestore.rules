@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Accounts: anyone can look up a name; only the creator can change or delete it.
+    match /accounts/{key} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['name', 'salt', 'hash', 'uid', 'iters'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 16;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Online rooms: every open tab keeps one small "I'm here" record per room.
+    match /rooms/{room}/peers/{peer} {
+      allow get, list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.u == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.u == request.auth.uid
+        && request.resource.data.u == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.u == request.auth.uid;
+    }
+
+    // Lobby: the list of open rooms and who is online.
+    match /lobby/{peer} {
+      allow get, list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.u == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.u == request.auth.uid
+        && request.resource.data.u == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.u == request.auth.uid;
+    }
+  }
+}
