@@ -4,6 +4,6 @@
 window.CHESS_CONFIG = {
   firebase: {
     apiKey: "",     // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS-w_VTVlNQM"
-    projectId: ""   // Firebase "Project ID", e.g. "chess-c82cd"
+    projectId: ""   // Firebase "chess-c82cd", e.g. "chess-c82cd"
   }
 };
