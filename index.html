@@ -201,7 +201,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="ov" id="promo" hidden><div class="card"><h2 style="font-size:26px">Promote to…</h2><div class="row grp" id="pp"></div></div></div>
 <script src="config.js"></script>
 <script>
-(()=>{"use strict";
+(()=>{"use strict";var backendKind="claude",backendWhy="",backendP=null;
 
 const V={P:100,N:320,B:330,R:500,Q:900,K:0},G={K:"♚",Q:"♛",R:"♜",B:"♝",N:"♞",P:"♟\uFE0E"},NM={K:"king",Q:"queen",R:"rook",B:"bishop",N:"knight",P:"pawn"};
 const D={N:[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]],K:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],B:[[1,1],[1,-1],[-1,1],[-1,-1]],R:[[1,0],[-1,0],[0,1],[0,-1]]};D.Q=D.K;
@@ -465,13 +465,13 @@ if(!silent){over=true;endMsg="You left the room.";log("You left the room.");draw
 function rooms(){const m=new Map();if(LB)for(const p of LB.peers()){const x=p.presence;if(!x||!x.og)continue;const r=m.get(x.og)||{id:String(x.og),title:String(x.gt||"Room").slice(0,24),lock:String(x.gh||""),fog:!!x.gf,names:[],n:0};r.names.push(String(x.pn||"Player").slice(0,16));r.n++;m.set(x.og,r)}return[...m.values()]}
 function renderLobby(){dupCheck();const L=$("#olist");if(!L)return;L.innerHTML="";const lr=$("#lr");if(lr)lr.hidden=!room;
 if(room){ost(oReady?`You’re in “${oTitle}”${oLockH?" 🔒":""}${oPlain?` (code: ${oPlain})`:""}${seat==="s"?" as a spectator.":". Other players can see your room in the list."}`:"Joining…");return}
-if(!LB){ost(window.claude?"Online play isn’t available in this view. Open the published artifact while signed in; other players must be in your organization or invited to it.":"Online play needs the Firebase setup in config.js. See README.md.");return}
+if(!LB){ost(window.claude?"Online play isn’t available in this view. Open the published artifact while signed in; other players must be in your organization or invited to it.":"Online play needs Firebase. "+(backendWhy||"Fill in config.js (see README.md)."));return}
 const rs=rooms();ost((rs.length?`${rs.length} ${rs.length===1?"room":"rooms"} open right now. Tap one to join.`:"No rooms yet. Create one and it shows up here for everyone.")+" Updated "+new Date().toLocaleTimeString()+".");
 rs.forEach(r=>{const row=document.createElement("div");row.className="og";const t=document.createElement("div"),a=document.createElement("div"),c=document.createElement("div");a.className="bn";a.textContent=(r.lock?"🔒 ":"")+r.title;c.className="bt";c.textContent=r.names.join(" vs ")+" · "+Math.min(r.n,2)+"/2 players"+(r.fog?" · fog of war":"");t.append(a,c);const b=document.createElement("button");b.textContent=r.n>=2?"Watch":"Join";b.onclick=()=>oEnter(r);row.append(t,b);L.append(row)})}
 $("#mk").onclick=oCreate;
 $("#lr").onclick=()=>oLeave();
 $("#rm").onclick=()=>{PX.rm=on_n+1;sendP();ost("Rematch requested. Waiting for your opponent…")};
-(async()=>{try{LB=await getRooms()}catch(e){LB=null}if(LB){try{lbUn=LB.onPeers(()=>renderLobby(),()=>{})}catch(e){}}nameLive();renderLobby()})();
+(async()=>{await 0;try{LB=await getRooms()}catch(e){LB=null}if(LB){try{lbUn=LB.onPeers(()=>renderLobby(),()=>{})}catch(e){}}nameLive();renderLobby()})();
 
 /* ---- game review ---- */
 let hist=[],hist0=null,lastNames=null,ri=0,rvTok=0,rvFlip=false;
@@ -752,7 +752,7 @@ function nameLive(){if(LB)LB.presence({un:nameOk&&S.nick?S.nick.toLowerCase():nu
 function dupCheck(){if(!LB||!nameOk||!S.nick)return;const ps=LB.peers(),me=ps.find(p=>p.sameTab);if(!me)return;const mine=S.nick.toLowerCase();
 if(ps.some(p=>!p.sameTab&&p.presence&&p.presence.un===mine&&(p.presence.ut>sessionT||(p.presence.ut===sessionT&&p.peer<me.peer))))clearSession("You were logged out here because “"+S.nick+"” was opened on another tab or device. Log in again to take it back.",true)}
 const nstat=t=>{const e=$("#nstat");if(e)e.textContent=t};
-let backendKind="claude";const bk=()=>backendKind==="local"?" (Local account: saved on this device only. Worldwide names need the online database; see README.)":"";
+const bk=()=>backendKind==="local"?" (Local account: saved on this device only. "+(backendWhy||"Worldwide names need the online database; see README.")+")":"";
 function syncNick(){$("#acout").hidden=nameOk;$("#ain").hidden=!nameOk;$("#ame").textContent=nameOk?"Signed in as “"+S.nick+"”":"";
 nstat(nameOk?"✓ Your name is saved to your account. Closing the tab doesn’t release it, and nobody else can take it."+bk():guestOK?"Playing as "+guestName+" (guest). Log in or create an account to save a name.":DBN?"Log in, or create an account to reserve your name for good."+bk():"Accounts need a signed-in view of the artifact.")}
 $("#nick").oninput=()=>{nickDirty=true};
@@ -806,11 +806,12 @@ let uid=null;try{uid=localStorage.getItem("cc_local_uid")}catch(e){}if(!uid){uid
 const doc=p=>({get:async()=>snapOf(p,g(p)),set:async v=>put(p,v),delete:async()=>del(p),acquire:async()=>({acquired:true}),onSnapshot:next=>{next(snapOf(p,g(p)));return()=>{}}});
 const collection=c=>({where:(f,op,v)=>({get:async()=>({docs:keys().filter(k=>k.startsWith(c+"/")).map(k=>snapOf(k,g(k))).filter(x=>x.data()&&x.data()[f]===v)})})});
 return{db:{local:true,doc,collection},uid}}
+const fbHint=e=>{const c=String(e&&(e.code||e.message)||"error");if(/operation-not-allowed|admin-restricted/.test(c))return"Firebase says Anonymous sign-in is off. Turn it on: Authentication > Sign-in method > Anonymous.";if(/api-key|invalid-api/.test(c))return"The apiKey in config.js isn’t valid.";if(/unauthorized-domain/.test(c))return"Add your site’s domain under Authentication > Settings > Authorized domains.";if(/^load /.test(c))return"The Firebase library couldn’t be downloaded ("+c.slice(5)+"). A blocker or the network may be stopping it.";if(/not_granted|permission-denied/.test(c))return"Firestore refused the request. Create the Firestore database and publish firestore.rules (README steps 2.3 and 2.4).";if(/not-found|NOT_FOUND|project/.test(c))return"Firestore couldn’t find the project. Check projectId in config.js and that the Firestore database was created.";return"Firebase problem: "+c};
 async function makeBackend(){const f=CFG.firebase;if(f&&f.apiKey&&(f.projectId||f.databaseURL)){try{const cfg={...f};if(!cfg.projectId){const m=/\/\/([^./]+?)(?:-default-rtdb)?\./.exec(cfg.databaseURL||"");cfg.projectId=m&&m[1]}
 if(!window.firebase)for(const m of["app","auth","firestore"])await loadJs("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-"+m+"-compat.js");
-const a=fbAdapter(cfg),u=await a.uid();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
-let backendP=null;const getBackend=()=>backendP||(backendP=makeBackend());
-const getRooms=async()=>window.claude?((await claude.use("room"))||null):((await getBackend()).rooms||null);
+const a=fbAdapter(cfg),u=await a.uid();await a.db.doc("accounts/_ping").get();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){backendWhy=fbHint(e);console.error("Firebase setup failed:",e)}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
+function getBackend(){return backendP||(backendP=makeBackend())}
+async function getRooms(){return window.claude?((await claude.use("room"))||null):((await getBackend()).rooms||null)}
 (async()=>{try{if(window.claude){DBN=await claude.use("db");const U=await claude.use("user");UID=U?await U.id():null}else{const be=await getBackend();DBN=be.db;UID=be.uid}}catch(e){DBN=null;UID=null}
 if(!DBN){guestOK=true;syncNick();if(B)draw();return}
 let st=null;try{st=JSON.parse(localStorage.getItem("cc_acct")||"null")}catch(e){}
