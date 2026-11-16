@@ -1,9 +1,6 @@
-// Cheater's Chess: online settings (see README.md).
-// Leave both values empty and the game still works, but accounts are saved only in
-// the browser that created them and online rooms are not available.
 window.CHESS_CONFIG = {
   firebase: {
-    apiKey: "",     // Firebase web app "AIzaSyAZbXREGshhT4HvmnKkxrqHS-w_VTVlNQM"
-    projectId: ""   // Firebase "chess-c82cd", e.g. "chess-c82cd"
+    apiKey: "AIzaSyAZbXREGshhT4HvmnKkxrqHS-w_VTVlNQM",
+    projectId: "chess-c82cd"
   }
 };
