@@ -199,7 +199,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="ov" id="cp" hidden><div class="card"><h2 id="cpt" style="font-size:24px">Room code</h2><p class="note" id="cpe"></p><input id="cpi" maxlength="12" placeholder="Enter the code" autocomplete="off"><div class="row grp"><button class="pri" id="cpy">Join</button><button id="cpn">Cancel</button></div></div></div>
 <div class="ov" id="ask" hidden><div class="card"><h2 id="aq" style="font-size:24px"></h2><div class="row grp"><button class="pri" id="ay">Yes</button><button id="an">No</button></div></div></div>
 <div class="ov" id="promo" hidden><div class="card"><h2 style="font-size:26px">Promote to…</h2><div class="row grp" id="pp"></div></div></div>
-<script src="config.js"></script>
+<script src="config.js" onerror="window.__cfgFail=1"></script>
 <script>
 (()=>{"use strict";var backendKind="claude",backendWhy="",backendP=null;
 
@@ -807,7 +807,12 @@ const doc=p=>({get:async()=>snapOf(p,g(p)),set:async v=>put(p,v),delete:async()=
 const collection=c=>({where:(f,op,v)=>({get:async()=>({docs:keys().filter(k=>k.startsWith(c+"/")).map(k=>snapOf(k,g(k))).filter(x=>x.data()&&x.data()[f]===v)})})});
 return{db:{local:true,doc,collection},uid}}
 const fbHint=e=>{const c=String(e&&(e.code||e.message)||"error");if(/operation-not-allowed|admin-restricted/.test(c))return"Firebase says Anonymous sign-in is off. Turn it on: Authentication > Sign-in method > Anonymous.";if(/api-key|invalid-api/.test(c))return"The apiKey in config.js isn’t valid.";if(/unauthorized-domain/.test(c))return"Add your site’s domain under Authentication > Settings > Authorized domains.";if(/^load /.test(c))return"The Firebase library couldn’t be downloaded ("+c.slice(5)+"). A blocker or the network may be stopping it.";if(/not_granted|permission-denied/.test(c))return"Firestore refused the request. Create the Firestore database and publish firestore.rules (README steps 2.3 and 2.4).";if(/not-found|NOT_FOUND|project/.test(c))return"Firestore couldn’t find the project. Check projectId in config.js and that the Firestore database was created.";return"Firebase problem: "+c};
-async function makeBackend(){const f=CFG.firebase;if(f&&f.apiKey&&(f.projectId||f.databaseURL)){try{const cfg={...f};if(!cfg.projectId){const m=/\/\/([^./]+?)(?:-default-rtdb)?\./.exec(cfg.databaseURL||"");cfg.projectId=m&&m[1]}
+function pickFb(){const c=window.CHESS_CONFIG;if(c&&c.firebase)return c.firebase;if(c&&c.apiKey)return c;if(window.firebaseConfig)return window.firebaseConfig;try{if(typeof firebaseConfig!=="undefined")return firebaseConfig}catch(e){}return null}
+const pidOf=f=>f.projectId||((/^([^.]+)\.firebaseapp\.com$/.exec(f.authDomain||"")||[])[1])||((/\/\/([^./]+?)(?:-default-rtdb)?\./.exec(f.databaseURL||"")||[])[1])||"";
+async function makeBackend(){const f=pickFb(),pid=f&&pidOf(f);
+if(!f)backendWhy=window.__cfgFail?"The file config.js wasn’t found. It must be named exactly config.js and sit in the same folder as index.html.":"config.js has no Firebase settings in it yet. Paste your apiKey and projectId.";
+else if(!f.apiKey||!pid)backendWhy="config.js is missing your "+(!f.apiKey?"apiKey":"projectId")+".";
+if(f&&f.apiKey&&pid){try{const cfg={...f,projectId:pid};
 if(!window.firebase)for(const m of["app","auth","firestore"])await loadJs("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-"+m+"-compat.js");
 const a=fbAdapter(cfg),u=await a.uid();await a.db.doc("accounts/_ping").get();backendKind="firebase";return{db:a.db,uid:u,rooms:fbRooms(a)}}catch(e){backendWhy=fbHint(e);console.error("Firebase setup failed:",e)}}backendKind="local";const l=localAdapter();return{db:l.db,uid:l.uid}}
 function getBackend(){return backendP||(backendP=makeBackend())}
