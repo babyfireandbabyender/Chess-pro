@@ -106,7 +106,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="main">
 <div class="top"><h1>Cheater’s Chess</h1><div class="tb"><button id="bm">Menu</button><button id="bs">Settings</button><button id="br">Review</button></div></div>
 <div id="st"></div>
-<div class="row" id="lrow" hidden><button id="uB" type="button">↶ Undo</button><button id="rB" type="button">↷ Redo</button><button id="hB" type="button">Hint</button></div>
+<div class="row" id="lrow"><button id="uB" type="button">↶ Undo</button><button id="rB" type="button">↷ Redo</button><button id="hB" type="button">Hint</button></div>
 <div class="nb" id="ntop"></div><div class="bw"><div id="bd" role="grid" aria-label="Chess board"></div><div id="fogov" hidden></div><div id="toast" hidden></div></div><div class="nb" id="nbot"></div>
 </div>
 <div class="side"><p id="score"></p><ul id="log"></ul>
@@ -394,7 +394,7 @@ if(sel&&sel[0]===r&&sel[1]===c)d.classList.add("sel");if(ck&&ck[0]===r&&ck[1]===
 pm.forEach((q,i)=>{if((q[0]===r&&q[1]===c)||(q[2]===r&&q[3]===c)){d.classList.add("pm");if(q[2]===r&&q[3]===c)d.dataset.n=i+1}});
 if(S.hints&&ls.some(m=>m[2]===r&&m[3]===c))d.classList.add(p&&vis?"cap":"mv");
 if(p&&vis){d.textContent=G[p[1]];d.classList.add(p[0])}d.onclick=()=>click(r,c);g.append(d)}
-$("#lrow").hidden=mode!=="local";$("#uB").disabled=!hist.length;$("#rB").disabled=!redoSt.length;$("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
+$("#lrow").hidden=false;$("#uB").disabled=mode!=="local"||!hist.length;$("#rB").disabled=mode!=="local"||!redoSt.length;$("#hB").disabled=mode!=="local"||over;$("#lrow").title=mode==="local"?"":"Choose Mode: Pass & play in the menu, then Start";$("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
 const o=mode==="online"&&room?oOpp():null;
 $("#score").textContent=mode==="online"?`Online · ${oTitle}${oPlain?" · code "+oPlain:""} · ${seat==="s"?"spectating":"you play "+SIDE(seat)}${o?" vs "+nmOf(o):""}`:mode==="local"?"Pass & play · White vs Black":`${persona.n} (Elo ${persona.elo}) · cheats left: ${cheatsLeft} of ${tot}`;fogMask(V,fl);bars(fl)}
 function init(o){o=o||{};fog=!!o.fog;tcSet(o.tc||S.tc);B=Array.from({length:8},()=>Array(8).fill(null));const row=o.row||(S.shuffle?shuf():[..."RNBQKBNR"]);row.forEach((t,c)=>{B[0][c]="b"+t;B[1][c]="bP";B[6][c]="wP";B[7][c]="w"+t});B.ep=null;{const rs=[];row.forEach((t,c)=>{if(t==="R")rs.push(c)});B.kf={w:row.indexOf("K"),b:row.indexOf("K")};B.cr={w:rs.slice(),b:rs.slice()}}
