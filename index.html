@@ -80,7 +80,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 #toast{z-index:4}
 #fogov{position:absolute;inset:3px;pointer-events:none;z-index:2;border-radius:3px;background-color:#1e2a33;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.80  0 0 0 0 0.88  0 0 0 0 0.95  0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),radial-gradient(ellipse 45% 35% at 30% 40%,rgba(170,195,215,.30),transparent 70%),radial-gradient(ellipse 40% 30% at 70% 65%,rgba(150,178,200,.24),transparent 70%);background-size:220px 220px,160% 160%,160% 160%;background-repeat:repeat,no-repeat,no-repeat;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 @media (prefers-reduced-motion:no-preference){#fogov{animation:mistDrift 14s linear infinite}}
-@keyframes mistDrift{from{background-position:0 0,0% 0%,100% 100%}to{background-position:220px 140px,100% 60%,0% 30%}}.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
+@keyframes mistDrift{from{background-position:0 0,0% 0%,100% 100%}to{background-position:220px 140px,100% 60%,0% 30%}}.hintf{box-shadow:inset 0 0 0 100px rgba(40,170,80,.42)}.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
 .bc{display:flex;gap:12px;align-items:center;text-align:left;width:100%;padding:10px 12px;box-sizing:border-box}
 .bc[aria-pressed=true]{border:2px solid var(--acc);background:var(--bg)}
 .av{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px Georgia,serif;text-shadow:0 1px 2px rgba(0,0,0,.45)}
@@ -106,6 +106,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 <div class="main">
 <div class="top"><h1>Cheater’s Chess</h1><div class="tb"><button id="bm">Menu</button><button id="bs">Settings</button><button id="br">Review</button></div></div>
 <div id="st"></div>
+<div class="row" id="lrow" hidden><button id="uB" type="button">↶ Undo</button><button id="rB" type="button">↷ Redo</button><button id="hB" type="button">Hint</button></div>
 <div class="nb" id="ntop"></div><div class="bw"><div id="bd" role="grid" aria-label="Chess board"></div><div id="fogov" hidden></div><div id="toast" hidden></div></div><div class="nb" id="nbot"></div>
 </div>
 <div class="side"><p id="score"></p><ul id="log"></ul>
@@ -363,7 +364,7 @@ if(!wl)return end(chk(B,"w")?(kp(B,"w")?"Checkmate. The bot wins.":"Your king wa
 draw();
 if(pm.length){const q=pm[0],f=legal(B,"w").find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];if(m){pm=pm.slice(1);later(()=>{if(!over&&!busy&&!menuOpen())play(m);else{pm=[];draw()}},60)}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}}
 const SIDE=c=>c==="w"?"White":"Black";
-function play(m){if(mode==="online")return oPlay(m);tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log((mode==="bot"?"You: ":SIDE(me)+": ")+mn(B,m));B=doM(B,m);rec(me,b0,m);sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);
+function play(m){if(mode==="online")return oPlay(m);redoSt=[];hintMv=null;tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log((mode==="bot"?"You: ":SIDE(me)+": ")+mn(B,m));B=doM(B,m);rec(me,b0,m);sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);
 if(mode==="local"){turn=them;if(fog){if(!kp(B,them))return end(`${SIDE(me)} captured the king! ${SIDE(me)} wins.`,seat===me?true:seat===them?false:undefined);if(!gen(B,them).length)return end("Stalemate. It’s a draw.")}else if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?true:undefined);if(dw)return end(dw);return draw()}
 busy=true;draw();if(dw&&legal(B,"b").length)return end(dw);later(botTurn,S.speed)}
 const menuOpen=()=>!$("#menu").hidden||!$("#set").hidden||!$("#promo").hidden||!$("#ask").hidden||!$("#review").hidden||!$("#imp").hidden;
@@ -379,7 +380,7 @@ if(mode==="local"){const c1=fl?"w":"b",c2=fl?"b":"w";nbar(t,SIDE(c1),"",!over&&t
 if(mode==="online"&&room){const pl=players(),nm=c=>{if(c===seat)return oNm;const p=pl.find(p=>p.presence.seat===c);return p?nmOf(p):"Waiting…"},c2=seat==="s"?"w":seat,c1=opp(c2);nbar(t,nm(c1),SIDE(c1),!over&&turn===c1,c1);nbar(b,nm(c2),SIDE(c2)+(seat===c2?" · you":""),!over&&turn===c2,c2);return}
 t.replaceChildren();b.replaceChildren()}
 function stat(){if(mode==="online"){if(!oReady||!room)return"Joining room…";const o=oOpp();if(seat==="s")return`Watching · ${SIDE(turn)} to move.`;if(!o)return`Waiting for an opponent in “${oTitle}”${oPlain?" · code "+oPlain:""}…`;return(fog?"Fog of war · ":"")+(turn===seat?((!fog&&chk(B,turn))?"Check! Your move.":"Your move."):`Waiting for ${nmOf(o)}…${pm.length?" "+pm.length+" premove"+(pm.length>1?"s":"")+" queued. Tap an empty square to clear.":" Tap a piece to premove."}`)}
-if(mode==="local")return`${SIDE(turn)} to move${chk(B,turn)?" — check!":"."}`;return busy?(pm.length?`Bot is thinking… ${pm.length} premove${pm.length>1?"s":""} queued. Tap an empty square to clear.`:"Bot is thinking… tap a piece to premove."):chk(B,"w")?"Check! Your move.":"Your move."}
+if(mode==="local")return`${SIDE(turn)} to move${chk(B,turn)?" — check!":"."}`+(hintMv?" Hint: "+NM[B[hintMv[0]][hintMv[1]][1]]+" "+sqn(hintMv[0],hintMv[1])+" to "+sqn(hintMv[2],hintMv[3])+".":"");return busy?(pm.length?`Bot is thinking… ${pm.length} premove${pm.length>1?"s":""} queued. Tap an empty square to clear.`:"Bot is thinking… tap a piece to premove."):chk(B,"w")?"Check! Your move.":"Your move."}
 let lastMask="";
 function fogMask(V,fl){const fo=$("#fogov");if(!fo)return;if(!V){fo.hidden=true;lastMask="";return}const rs=[];
 for(let i=0;i<64;i++){const r=fl?7-(i>>3):i>>3,c=fl?7-(i&7):i&7;if(V.has(r*8+c))continue;let x=i&7,y=i>>3,w=1,h=1;if(x===0){x=-1;w++}if(x+w===8)w++;if(y===0){y=-1;h++}if(y+h===8)h++;rs.push("<rect x='"+x+"' y='"+y+"' width='"+w+"' height='"+h+"'/>")}
@@ -387,12 +388,13 @@ const svg="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' preserveAsp
 if(svg!==lastMask){lastMask=svg;const u='url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';fo.style.webkitMaskImage=u;fo.style.maskImage=u}fo.hidden=false}
 function draw(){const g=$("#bd");g.innerHTML="";const Bd=prem()&&pm.length&&!fog?hyp():B,V=fogOn()?visOf(Bd,seat):null;const fl=(mode==="local"&&S.flip&&turn==="b")||(mode==="online"&&seat==="b"),ck=fog?null:chk(B,"w")?kp(B,"w"):chk(B,"b")?kp(B,"b"):null;
 for(let i=0;i<64;i++){const r=fl?7-(i>>3):i>>3,c=fl?7-(i&7):i&7,p=Bd[r][c],d=document.createElement("div");d.className="sq "+((r+c)%2?"dk":"lt");const vis=!V||V.has(r*8+c);if(!vis)d.classList.add("fog");
+if(hintMv&&mode==="local"&&((hintMv[0]===r&&hintMv[1]===c)||(hintMv[2]===r&&hintMv[3]===c)))d.classList.add("hintf");
 if(S.hl&&last&&vis&&((last[0]===r&&last[1]===c)||(last[2]===r&&last[3]===c)))d.classList.add("last");
 if(sel&&sel[0]===r&&sel[1]===c)d.classList.add("sel");if(ck&&ck[0]===r&&ck[1]===c)d.classList.add("ck");
 pm.forEach((q,i)=>{if((q[0]===r&&q[1]===c)||(q[2]===r&&q[3]===c)){d.classList.add("pm");if(q[2]===r&&q[3]===c)d.dataset.n=i+1}});
 if(S.hints&&ls.some(m=>m[2]===r&&m[3]===c))d.classList.add(p&&vis?"cap":"mv");
 if(p&&vis){d.textContent=G[p[1]];d.classList.add(p[0])}d.onclick=()=>click(r,c);g.append(d)}
-$("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
+$("#lrow").hidden=mode!=="local";$("#uB").disabled=!hist.length;$("#rB").disabled=!redoSt.length;$("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
 const o=mode==="online"&&room?oOpp():null;
 $("#score").textContent=mode==="online"?`Online · ${oTitle}${oPlain?" · code "+oPlain:""} · ${seat==="s"?"spectating":"you play "+SIDE(seat)}${o?" vs "+nmOf(o):""}`:mode==="local"?"Pass & play · White vs Black":`${persona.n} (Elo ${persona.elo}) · cheats left: ${cheatsLeft} of ${tot}`;fogMask(V,fl);bars(fl)}
 function init(o){o=o||{};fog=!!o.fog;tcSet(o.tc||S.tc);B=Array.from({length:8},()=>Array(8).fill(null));const row=o.row||(S.shuffle?shuf():[..."RNBQKBNR"]);row.forEach((t,c)=>{B[0][c]="b"+t;B[1][c]="bP";B[6][c]="wP";B[7][c]="w"+t});B.ep=null;{const rs=[];row.forEach((t,c)=>{if(t==="R")rs.push(c)});B.kf={w:row.indexOf("K"),b:row.indexOf("K")};B.cr={w:rs.slice(),b:rs.slice()}}
@@ -834,6 +836,15 @@ if(UID){const r=await DBN.collection("accounts").where("uid","==",UID).get(),d=r
 const o=await DBN.collection("names").where("uid","==",UID).get();if(o.docs.length){const x=o.docs[0].data();$("#nick").value=x.name||o.docs[0].id;nickDirty=true;syncNick();nstat("You hold “"+(x.name||o.docs[0].id)+"” from before, but it has no password yet. Type a password and tap Create account to secure it.");if(B)draw();return}}}catch(e){}
 syncNick();if(B)draw()})();
 
+/* ---- pass & play: undo, redo, hint ---- */
+let redoSt=[],hintMv=null;
+function undoL(){if(mode!=="local"||!hist.length)return;const e=hist.pop();redoSt.push(e);const prev=hist.length?hist[hist.length-1].b:hist0;B=cp(prev);turn=e.side;over=false;endMsg="";hintMv=null;last=hist.length?hist[hist.length-1].m:null;sel=null;ls=[];pm=[];log("Undo: "+e.text);draw()}
+function redoL(){if(mode!=="local"||!redoSt.length||over)return;const e=redoSt.pop(),b0=B;B=doM(B,e.m);rec(e.side,b0,e.m);last=e.m;hintMv=null;turn=opp(e.side);sel=null;ls=[];log("Redo: "+e.text);
+if(!legal(B,turn).length)return end(chk(B,turn)?`Checkmate! ${SIDE(e.side)} wins.`:"Stalemate. It’s a draw.",chk(B,turn)?true:undefined);draw()}
+function hintL(){if(mode!=="local"||over)return;const col=turn,L=legal(B,col);if(!L.length)return;let best=null,bs=-1e9;DL=performance.now()+1500;
+try{for(const m of L){const v=-ns(doM(B,m),opp(col),1,-1e9,1e9);if(v>bs||!best){bs=v;best=m}}}catch(e){}
+hintMv=best;draw()}
+$("#uB").onclick=undoL;$("#rB").onclick=redoL;$("#hB").onclick=hintL;
 syncUI();init();started=false;openMenu();
 
 })();
