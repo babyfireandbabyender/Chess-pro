@@ -789,7 +789,7 @@ const collection=c=>({where:(f,op,v)=>({get:async()=>{if(c==="names")return{docs
 return{db:{fb:true,doc,collection},uid:async()=>{await ready();return uid},ready,getUid:()=>uid,fs,del:p=>{if(!tok)return;try{fetch("https://firestore.googleapis.com/v1/projects/"+cfg.projectId+"/databases/(default)/documents/"+p,{method:"DELETE",keepalive:true,headers:{Authorization:"Bearer "+tok}}).catch(()=>{})}catch(e){}}}}
 function fbRooms(fb){const fs=fb.fs,tab=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6),open=new Set();
 const strip=p=>{const q={...p};delete q._;return Object.freeze(q)};
-const mk=(colPath,fast)=>{const HB=fast?6000:10000,STALE=fast?20000:30000;let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),seen={},docs=new Map(),unsub=null,timers=[],started=false;const ref=fs.collection(colPath).doc(tab);
+const mk=(colPath,fast)=>{const HB=fast?5000:10000,STALE=fast?15000:22000;let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),seen={},docs=new Map(),unsub=null,timers=[],started=false;const ref=fs.collection(colPath).doc(tab);
 const entry=(id,x)=>({peer:id,sameTab:id===tab,isMe:id===tab,presence:strip(x.p)});
 const list=()=>[...map].map(([id,x])=>entry(id,x));
 const setMap=m=>{const prev=map;map=m;const joined=[],left=[],updated=[];for(const[id,x]of map){const o=prev.get(id);if(!o)joined.push(entry(id,x));else if(JSON.stringify(o.p)!==JSON.stringify(x.p))updated.push(entry(id,x))}for(const[id,o]of prev)if(!map.has(id))left.push(entry(id,o));
@@ -806,7 +806,7 @@ return{peers:()=>list(),
 presence:async p=>{for(const k in p){if(p[k]===null)delete mine[k];else mine[k]=p[k]}mine._=1;const m=new Map(map);m.set(tab,{p:{...mine}});setMap(m);start();await put()},
 onPeers:(h,e)=>{subs.add(h);if(e)errs.add(e);start();if(!fast&&!(typeof document!=="undefined"&&document.hidden))listen();return()=>{subs.delete(h);if(e)errs.delete(e);if(!fast&&!subs.size)unlisten()}},
 leave:async()=>{alive=false;timers.forEach(clearInterval);unlisten();open.delete(ref);try{await ref.delete()}catch(e){}}}};
-const bye=()=>{open.forEach(r=>{try{if(r.path&&fb.del)fb.del(r.path)}catch(e){}try{r.delete()}catch(e){}})};addEventListener("pagehide",bye);addEventListener("beforeunload",bye);
+const bye=()=>{open.forEach(r=>{try{fb.del(r.path)}catch(e){}try{r.delete()}catch(e){}})};addEventListener("pagehide",bye);addEventListener("beforeunload",bye);
 const lobby=mk("lobby",false);
 return{peers:lobby.peers,presence:lobby.presence,onPeers:lobby.onPeers,join:async name=>{if(!/^[a-z0-9-]{3,40}$/.test(name))throw{code:"bad_name"};await fb.ready();return mk("rooms/"+name+"/peers",true)}}}
 function localAdapter(){const mem={},keys=()=>{try{return Object.keys(localStorage).filter(k=>k.startsWith("ccdb:")).map(k=>k.slice(5))}catch(e){return Object.keys(mem)}};
