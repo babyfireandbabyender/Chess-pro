@@ -77,7 +77,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-of
 .mc{display:flex;gap:6px;align-items:center;padding:6px 8px;cursor:pointer;min-width:0}
 .mc.cur{background:#4b4845;outline:2px solid #81b64c;outline-offset:-2px;border-radius:4px}
 .rvc{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.sq.fog{background:#1b2420!important}.sq.fog::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 6px,transparent 6px 12px)}.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
+.sq.fog{overflow:hidden}
+.sq.fog::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background-color:#26323b;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.78  0 0 0 0 0.86  0 0 0 0 0.93  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),linear-gradient(160deg,rgba(130,160,180,.16),rgba(8,14,20,.38));background-size:180px 180px,100% 100%}.clk.low{color:var(--acc);border-color:var(--acc)}.clk+.tdot{margin-left:0}#rcode,#cpi{text-transform:uppercase}#ps{width:100%;margin:10px 0}#code{flex:1;min-width:0;text-transform:uppercase}
 .bc{display:flex;gap:12px;align-items:center;text-align:left;width:100%;padding:10px 12px;box-sizing:border-box}
 .bc[aria-pressed=true]{border:2px solid var(--acc);background:var(--bg)}
 .av{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px Georgia,serif;text-shadow:0 1px 2px rgba(0,0,0,.45)}
@@ -343,7 +344,7 @@ const promoMove=(m,bd)=>(bd||B)[m[0]][m[1]][1]==="P"&&(m[2]===0||m[2]===7);
 const LG=(b,col)=>fog?gen(b,col):legal(b,col);
 const fogOn=()=>fog&&mode==="online"&&seat!=="s"&&!over;
 const prem=()=>busy||(mode==="online"&&!!room&&seat!=="s"&&turn!==seat&&!over);
-function visOf(b,col){const v=new Set();for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(p&&p[0]===col)v.add(r*8+c)}for(const m of gen(b,col,true))v.add(m[2]*8+m[3]);return v}
+function visOf(b,col){const v=new Set();for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(p&&p[0]===col)v.add(r*8+c)}for(const m of gen(b,col,true)){const pc=b[m[0]][m[1]];if(pc&&pc[1]==="P"&&m[1]!==m[3])continue;v.add(m[2]*8+m[3])}return v}
 const hyp=()=>{let h=B;for(const m of pm){if(!h[m[0]][m[1]])break;h=doM(h,m)}return h};
 
 /* ---- game flow ---- */
@@ -358,14 +359,14 @@ tcMoved("b");busy=false;sel=null;ls=[];
 const wl=legal(B,"w").length;if(wl){const dw=drawWhy("w");if(dw)return end(dw)}
 if(!wl)return end(chk(B,"w")?(kp(B,"w")?"Checkmate. The bot wins.":"Your king was captured. The bot wins."):"Stalemate. It’s a draw.",chk(B,"w")?false:undefined);
 draw();
-if(pm.length){const q=pm[0],f=legal(B,"w").find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];if(m){pm=pm.slice(1);later(()=>{if(!over&&!busy&&!menuOpen())play(m);else{pm=[];draw()}},Math.max(150,S.speed/2))}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}}
+if(pm.length){const q=pm[0],f=legal(B,"w").find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];if(m){pm=pm.slice(1);later(()=>{if(!over&&!busy&&!menuOpen())play(m);else{pm=[];draw()}},60)}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}}
 const SIDE=c=>c==="w"?"White":"Black";
 function play(m){if(mode==="online")return oPlay(m);tcMoved(turn);const me=turn,them=opp(me),b0=B,pw=b0[m[0]][m[1]][1]==="P",cp0=isCap(b0,m);log((mode==="bot"?"You: ":SIDE(me)+": ")+mn(B,m));B=doM(B,m);rec(me,b0,m);sfx(b0,B,m,them);last=m;sel=null;ls=[];hm=pw||cp0?0:hm+1;const dw=drawWhy(them);
 if(mode==="local"){turn=them;if(fog){if(!kp(B,them))return end(`${SIDE(me)} captured the king! ${SIDE(me)} wins.`,seat===me?true:seat===them?false:undefined);if(!gen(B,them).length)return end("Stalemate. It’s a draw.")}else if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"Stalemate. It’s a draw.",chk(B,them)?true:undefined);if(dw)return end(dw);return draw()}
 busy=true;draw();if(dw&&legal(B,"b").length)return end(dw);later(botTurn,S.speed)}
 const menuOpen=()=>!$("#menu").hidden||!$("#set").hidden||!$("#promo").hidden||!$("#ask").hidden||!$("#review").hidden||!$("#imp").hidden;
 function click(r,c){if(over||!started||menuOpen())return;const onl=mode==="online";if(onl&&(!room||seat==="s"||!oOpp()))return;const p=B[r][c],me=onl?seat:"w";
-if(busy||(onl&&seat!==turn)){const H=hyp(),hp=H[r][c];if(sel){const m=gen(H,me).find(m=>m[0]===sel[0]&&m[1]===sel[1]&&((m[5]===undefined&&m[2]===r&&m[3]===c)||(m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=[...pm,[...m,k]];draw()})}pm=[...pm,m];return draw()}}
+if(busy||pm.length||(onl&&seat!==turn)){const H=hyp(),hp=H[r][c];if(sel){const m=gen(H,me).find(m=>m[0]===sel[0]&&m[1]===sel[1]&&((m[5]===undefined&&m[2]===r&&m[3]===c)||(m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c))));if(m){sel=null;ls=[];snd("pm");if(promoMove(m,H)){draw();return askPromo(k=>{pm=(fog&&mode==="online")?[[...m,k]]:[...pm,[...m,k]];draw()})}pm=(fog&&mode==="online")?[m]:[...pm,m];return draw()}}
 if(hp&&hp[0]===me){sel=[r,c];ls=gen(H,me).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{if(!sel)pm=[];sel=null;ls=[]}return draw()}
 if(sel){const m=ls.find(m=>m[5]===undefined&&m[2]===r&&m[3]===c)||ls.find(m=>m[5]!==undefined&&m[2]===r&&(m[3]===c||m[5]===c));if(m){if(promoMove(m))return askPromo(k=>play([...m,k]));return play(m)}}
 if(p&&p[0]===turn){sel=[r,c];ls=LG(B,turn).filter(m=>m[0]===r&&m[1]===c);snd("sel")}else{sel=null;ls=[]}draw()}
@@ -382,7 +383,7 @@ for(let i=0;i<64;i++){const r=fl?7-(i>>3):i>>3,c=fl?7-(i&7):i&7,p=Bd[r][c],d=doc
 if(S.hl&&last&&vis&&((last[0]===r&&last[1]===c)||(last[2]===r&&last[3]===c)))d.classList.add("last");
 if(sel&&sel[0]===r&&sel[1]===c)d.classList.add("sel");if(ck&&ck[0]===r&&ck[1]===c)d.classList.add("ck");
 pm.forEach((q,i)=>{if((q[0]===r&&q[1]===c)||(q[2]===r&&q[3]===c)){d.classList.add("pm");if(q[2]===r&&q[3]===c)d.dataset.n=i+1}});
-if(S.hints&&ls.some(m=>m[2]===r&&m[3]===c))d.classList.add(p?"cap":"mv");
+if(S.hints&&ls.some(m=>m[2]===r&&m[3]===c))d.classList.add(p&&vis?"cap":"mv");
 if(p&&vis){d.textContent=G[p[1]];d.classList.add(p[0])}d.onclick=()=>click(r,c);g.append(d)}
 $("#st").textContent=over?endMsg:stat();$("#br").disabled=!(over&&hist.length);$("#br").title=over?"":"Available when the game is finished";
 const o=mode==="online"&&room?oOpp():null;
@@ -419,7 +420,7 @@ if(!legal(B,them).length)return end(chk(B,them)?`Checkmate! ${SIDE(me)} wins.`:"
 function flog(me,b0,m){if(!fogOn()||me===seat){log(SIDE(me)+": "+mn(b0,m));return}const t=B[m[2]][m[3]];log(SIDE(me)+": "+(visOf(B,seat).has(m[2]*8+m[3])&&t?NM[t[1]]+" to "+sqn(m[2],m[3]):"moves somewhere in the fog"))}
 const fsfx=(b0,b1,m,them)=>{if(fogOn()&&them===seat&&!visOf(b1,seat).has(m[2]*8+m[3])){snd("move");return}sfx(b0,b1,m,them)};
 function oPm(){if(mode!=="online"||over||!pm.length||turn!==seat||oPmBusy)return;const q=pm[0],f=LG(B,seat).find(x=>[0,1,2,3,5].every(i=>x[i]===q[i])),m=f&&[...f,q[4]];
-if(m){pm=pm.slice(1);oPmBusy=true;later(()=>{oPmBusy=false;if(!over&&turn===seat&&!menuOpen())oPlay(m);else{pm=[];draw()}},Math.max(120,S.speed/3))}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}
+if(m){pm=pm.slice(1);oPmBusy=true;later(()=>{oPmBusy=false;if(!over&&turn===seat&&!menuOpen())oPlay(m);else{pm=[];draw()}},40)}else{pm=[];log("Premoves cleared: the position changed, so they’re no longer legal.");draw()}}
 function oPlay(m){oApply(m);sendP();draw()}
 function replay(ml){qt=true;for(const t of String(ml||"").split(" ").filter(Boolean)){const m=dec(t);if(!m)break;oApply(m,true)}qt=false}
 function decide(){if(!room||oReady)return;oReady=true;const ps=players();
