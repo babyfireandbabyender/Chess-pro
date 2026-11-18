@@ -4601,27 +4601,40 @@ box.append(row,g,up);
 if((S.bg||"default")!=="default"){const dl=document.createElement("label");dl.style.cssText="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap";dl.append(document.createTextNode("Dim the background"));const r=document.createElement("input");r.type="range";r.min=0;r.max=70;r.value=S.bgDim;r.style.flex="1";r.oninput=()=>{S.bgDim=+r.value;applyBg()};r.onchange=save;dl.append(r);box.append(dl)}
 if(has&&S.bg==="custom"){const rm=document.createElement("button");rm.type="button";rm.textContent="Remove my photo";rm.style.marginTop="8px";rm.onclick=()=>{try{localStorage.removeItem("cc_bgimg")}catch(e){}S.bg="default";save();syncUI()};box.append(rm)}
 box.append(msg)}
+/* ---- Firestore: Elo profiles and game history ---- */
+const fbOn=()=>!!(DBN&&DBN.fb&&DBN.fs);
+async function fbReady(){if(!fbOn()||!DBN.ready)return false;try{await DBN.ready();return true}catch(e){return false}}
+async function pullProfile(n){if(!(await fbReady()))return false;const sn=await DBN.fs.collection("profiles").doc(nkey(n)).get();
+if(!sn.exists){await pushProfile(n);return true}const d=sn.data()||{};const k=String(n).toLowerCase(),m=eloMap("cc_elo"),g=eloMap("cc_elo_g");
+if(typeof d.elo==="number"){m[k]=d.elo;g[k]=d.games||0;try{localStorage.setItem("cc_elo",JSON.stringify(m));localStorage.setItem("cc_elo_g",JSON.stringify(g))}catch(e){}}return true}
+async function pushProfile(n){if(!(await fbReady()))return;await DBN.fs.collection("profiles").doc(nkey(n)).set({elo:Math.round(eloGet(n)),games:eloGames(n),name:String(n).slice(0,16),t:Date.now()},{merge:true})}
+async function pushGame(g){if(!(await fbReady()))return;await DBN.fs.collection("games").doc(String(g.id)).set(JSON.parse(JSON.stringify(g)))}
+async function clearRemote(){if(!(nameOk&&S.nick&&await fbReady()))return;const q=await DBN.fs.collection("games").where("acct","==",nkey(S.nick)).get();for(const d of q.docs)await d.ref.delete()}
+async function pullProfileThenAsk(name){try{await pullProfile(name)}catch(e){}if(!eloHas(name))askLevel(name);syncUI()}
+
 /* ---- game history ---- */
 const serB=b=>{let f="";for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];f+=p?p:".."}return{p:f,e:b.ep||null,c:b.cr||null,k:b.kf||null}};
 const deserB=o=>{const b=Array.from({length:8},()=>Array(8).fill(null));for(let i=0;i<64;i++){const v=o.p.slice(i*2,i*2+2);b[i>>3][i&7]=v===".."?null:v}b.ep=o.e;b.cr=o.c;b.kf=o.k;return b};
 const gamesList=()=>{try{return JSON.parse(localStorage.getItem("cc_games")||"[]")}catch(e){return[]}};
 function saveGame(){if(!hist0||!hist.length)return;const g={id:Date.now(),when:new Date().toLocaleString(),mode,names:lastNames,res:endMsg,fog:!!hist.fog,s0:serB(hist0),h:hist.map(e=>({s:e.side,m:e.m,k:e.kind,sb:e.sub,tx:e.text,sn:e.san,tg:e.tags,b:serB(e.b)}))};
-let arr=gamesList();arr.unshift(g);arr=arr.slice(0,30);try{localStorage.setItem("cc_games",JSON.stringify(arr))}catch(e){}}
+let arr=gamesList();arr.unshift(g);arr=arr.slice(0,30);try{localStorage.setItem("cc_games",JSON.stringify(arr))}catch(e){}if(nameOk&&S.nick)pushGame(Object.assign({acct:nkey(S.nick)},g)).catch(()=>{})}
 const modeName=m=>m==="bot"?"vs bot":m==="local"?"Pass & play":"Online";
-function renderHist(){const L=$("#hlist");L.innerHTML="";const arr=gamesList();$("#hmsg").textContent="";
+async function renderHist(){let arr=gamesList();$("#hmsg").textContent="";
+if(nameOk&&S.nick&&await fbReady()){try{const q=await DBN.fs.collection("games").where("acct","==",nkey(S.nick)).limit(30).get();arr=q.docs.map(d=>d.data()).sort((a,b)=>b.id-a.id)}catch(e){$("#hmsg").textContent="Couldn’t load online history; showing games from this device."}}
+const L=$("#hlist");L.innerHTML="";
 if(!arr.length){L.textContent="No games yet. Finish a game and it appears here.";return}
 arr.forEach(g=>{const row=document.createElement("div");row.className="og";const t=document.createElement("div");const a=document.createElement("div");a.className="bn";a.textContent=modeName(g.mode)+" · "+((g.names&&g.names.w)||"White")+" vs "+((g.names&&g.names.b)||"Black");const c=document.createElement("div");c.className="bt";c.textContent=g.when+" · "+(g.res||"")+" · "+g.h.length+" moves";t.append(a,c);
 const b=document.createElement("button");b.textContent="Review";b.onclick=()=>openSaved(g);row.append(t,b);L.append(row)})}
 function openSaved(g){if(started&&!over){$("#hmsg").textContent="Finish or resign the current game first, then review.";return}
-hist=g.h.map(x=>({side:x.s,m:x.m,kind:x.k,sub:x.sb,text:x.tx,san:x.sn,tags:x.tg,b:deserB(x.b)}));hist0=deserB(g.s0);lastNames=g.names||{w:"White",b:"Black"};hist.fog=!!g.fog;over=true;endMsg=g.res||"";
+hist=g.h.map(x=>({side:x.s,m:x.m.map(v=>v===null?undefined:v),kind:x.k,sub:x.sb,text:x.tx,san:x.sn,tags:x.tg,b:deserB(x.b)}));hist0=deserB(g.s0);lastNames=g.names||{w:"White",b:"Black"};hist.fog=!!g.fog;over=true;endMsg=g.res||"";
 $("#hist").hidden=true;openReview()}
 $("#hb").onclick=()=>{$("#menu").hidden=true;renderHist();$("#hist").hidden=false};
 $("#hclose").onclick=()=>{$("#hist").hidden=true;openMenu()};
-$("#hclear").onclick=()=>{try{localStorage.removeItem("cc_games")}catch(e){}renderHist()};
+$("#hclear").onclick=async()=>{try{localStorage.removeItem("cc_games")}catch(e){}try{await clearRemote()}catch(e){}renderHist()};
 
 /* ---- online Elo ---- */
 const eloGet=n=>{try{const m=JSON.parse(localStorage.getItem("cc_elo")||"{}");return m[String(n).toLowerCase()]||1200}catch(e){return 1200}};
-const eloSet=(n,v)=>{try{const m=JSON.parse(localStorage.getItem("cc_elo")||"{}");m[String(n).toLowerCase()]=v;localStorage.setItem("cc_elo",JSON.stringify(m))}catch(e){}};
+const eloSet=(n,v)=>{try{const m=JSON.parse(localStorage.getItem("cc_elo")||"{}");m[String(n).toLowerCase()]=v;localStorage.setItem("cc_elo",JSON.stringify(m))}catch(e){}if(nameOk&&S.nick&&String(n).toLowerCase()===String(S.nick).toLowerCase())setTimeout(()=>pushProfile(n).catch(()=>{}),0)};
 const eloCalc=(me,opp,score,k=32)=>Math.round(me+k*(score-1/(1+Math.pow(10,(opp-me)/400))));
 const eloMap=k=>{try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(e){return{}}};
 const eloHas=n=>!!n&&(String(n).toLowerCase() in eloMap("cc_elo"));
@@ -4692,7 +4705,7 @@ async function login(raw,pw){const name=String(raw||"").trim().replace(/ +/g," "
 if(!DBN)return{ok:false,msg:"Accounts need a signed-in view of the artifact."};
 try{const key=nkey(name),sn=await DBN.doc("accounts/"+key).get(),d=hasAcct(sn)&&sn.data();if(!d)return{ok:false,msg:"No account with that name. Check the spelling, or create one."};
 const h=await pwHash(pw,unb64(d.salt),d.iters||ACC_IT);if(h!==d.hash){await sleep(800);return{ok:false,msg:"Wrong password."}}return{ok:true,name:d.name,key,hash:h}}catch(e){return failMsg(e)}}
-function setSession(name,key,hash){if(!eloHas(name))setTimeout(()=>askLevel(name),400);S.nick=name;nameOk=true;nickDirty=false;acctKey=key;acctHash=hash;try{localStorage.setItem("cc_acct",JSON.stringify({k:key,h:hash}))}catch(e){}save();watchAcct(key);nameLive();$("#nick").value=name;$("#pw").value="";syncNick();syncUI()}
+function setSession(name,key,hash){pullProfileThenAsk(name);S.nick=name;nameOk=true;nickDirty=false;acctKey=key;acctHash=hash;try{localStorage.setItem("cc_acct",JSON.stringify({k:key,h:hash}))}catch(e){}save();watchAcct(key);nameLive();$("#nick").value=name;$("#pw").value="";syncNick();syncUI()}
 function clearSession(msg,keep){const old=S.nick;nameOk=false;S.nick="";acctKey="";acctHash="";if(!keep)try{localStorage.removeItem("cc_acct")}catch(e){}save();if(nameUn){try{nameUn()}catch(e){}nameUn=null}nameLive();$("#acout").hidden=false;$("#ain").hidden=true;$("#nick").value=old||"";nickDirty=true;nstat(msg||"Logged out.");syncUI()}
 function watchAcct(key){if(nameUn){try{nameUn()}catch(e){}}let seen=false;nameUn=DBN.doc("accounts/"+key).onSnapshot(sn=>{const d=sn.exists&&sn.data();if(d&&d.hash===acctHash){seen=true;return}if(seen&&nameOk)clearSession(d&&d.hash?"The password was changed elsewhere. Log in again.":"This account was deleted.")},()=>{})}
 function nameLive(){if(LB)LB.presence({un:nameOk&&S.nick?S.nick.toLowerCase():null,ut:nameOk?sessionT:null}).catch(()=>{})}
@@ -4725,7 +4738,7 @@ const w=p=>p.then(x=>x,e=>{throw norm(e)});
 const doc=p=>{const r=fs.doc(p),legacy=p.startsWith("names/");return{get:async()=>{if(legacy)return snapOf(p,null);await ready();const x=await w(r.get());return snapOf(p,x.exists?x.data():null)},set:async d=>{await ready();await w(r.set(d))},delete:async()=>{await ready();await w(r.delete())},acquire:async()=>({acquired:true}),
 onSnapshot:(n,e)=>r.onSnapshot(x=>n(snapOf(p,x.exists?x.data():null)),e||(()=>{}))}};
 const collection=c=>({where:(f,op,v)=>({get:async()=>{if(c==="names")return{docs:[]};await ready();const q=await w(fs.collection(c).where(f,op,v).get());return{docs:q.docs.map(d=>snapOf(c+"/"+d.id,d.data()))}}})});
-return{db:{fb:true,doc,collection},uid:async()=>{await ready();return uid},ready,getUid:()=>uid,fs,del:p=>{if(!tok)return;try{fetch("https://firestore.googleapis.com/v1/projects/"+cfg.projectId+"/databases/(default)/documents/"+p,{method:"DELETE",keepalive:true,headers:{Authorization:"Bearer "+tok}}).catch(()=>{})}catch(e){}}}}
+return{db:{fb:true,doc,collection,fs,ready},uid:async()=>{await ready();return uid},ready,getUid:()=>uid,fs,del:p=>{if(!tok)return;try{fetch("https://firestore.googleapis.com/v1/projects/"+cfg.projectId+"/databases/(default)/documents/"+p,{method:"DELETE",keepalive:true,headers:{Authorization:"Bearer "+tok}}).catch(()=>{})}catch(e){}}}}
 function fbRooms(fb){const fs=fb.fs,tab=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6),open=new Set();
 const strip=p=>{const q={...p};delete q._;return Object.freeze(q)};
 const mk=(colPath,fast)=>{const HB=fast?5000:10000,STALE=fast?15000:22000;let mine={_:1},alive=true,map=new Map(),subs=new Set(),errs=new Set(),seen={},docs=new Map(),unsub=null,timers=[],started=false;const ref=fs.collection(colPath).doc(tab);
